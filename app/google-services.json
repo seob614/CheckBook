@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "733242695495",
+    "project_id": "checkbook-39589",
+    "storage_bucket": "checkbook-39589.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:733242695495:android:e2219c6dcbe77e0da87662",
+        "android_client_info": {
+          "package_name": "com.example.checkbook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCk6fuDhCzcqauXA609Yj10wF0cuswGck0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

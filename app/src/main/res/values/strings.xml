@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">CheckBook</string>
+    <string name="feature_search_title">검색</string>
+    <string name="feature_check_title">체크</string>
+    <string name="feature_exchange_title">책교환</string>
+    <string name="feature_user_title">MY지식</string>
+</resources>
