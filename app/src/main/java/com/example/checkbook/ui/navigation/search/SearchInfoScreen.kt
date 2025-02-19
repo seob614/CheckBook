@@ -26,12 +26,13 @@ import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.mvi.MainViewModel
 import com.example.checkbook.ui.navigation.SearchScreen
 import com.example.checkbook.ui.theme.CheckBookTheme
+import com.example.checkbook.viewmodel.MyInfoViewModel
 
 const val SearchInfoRoute = "search_info_route"
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
+fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
     val data = navBackStackEntry?.arguments?.getString("data_key")
 
     BackHandler {
@@ -57,7 +58,7 @@ fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewMo
                     .fillMaxSize() // 전체 크기 차지
                     .background(Color.White) // 배경색 설정
             ) {
-                SearchListView(searchViewModel, navController, data?:"검색어 없음", "") // SearchListView는 Box 안에 배치됨
+                SearchListView(searchViewModel, myInfoViewModel, navController, data?:"검색어 없음", "") // SearchListView는 Box 안에 배치됨
             }
 
         }
@@ -71,8 +72,9 @@ fun SimpleComposablePreview() {
     val navController = rememberNavController()
     val mainViewModel = MainViewModel()
     val searchViewModel = SearchViewModel()
+    val myInfoViewModel = MyInfoViewModel()
     val navBackStackEntry: NavBackStackEntry? = null
     CheckBookTheme{
-        SearchInfoScreen(mainViewModel, searchViewModel, navController, navBackStackEntry)
+        SearchInfoScreen(mainViewModel, searchViewModel, myInfoViewModel, navController, navBackStackEntry)
     }
 }

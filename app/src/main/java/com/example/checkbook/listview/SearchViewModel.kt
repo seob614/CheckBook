@@ -1,25 +1,37 @@
 package com.example.checkbook.listview
 
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
+import androidx.room.util.copy
+import com.example.checkbook.auth.AuthRepository
+import com.example.checkbook.database.checkDatabase
+import com.example.checkbook.database.getCheckValue
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.GenericTypeIndicator
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlin.coroutines.resume
 
 class SearchViewModel @Inject constructor() : ViewModel() {
     // Firebase에서 아이템을 가져오는 로직
-    var selectedSearchItem: SearchItem? = null
     private val searchItems = MutableLiveData<List<SearchItem>>()
     val items: LiveData<List<SearchItem>> = searchItems
     /*
@@ -69,11 +81,29 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
                     val nameValue = databaseReference2.get().await().getValue(String::class.java) ?: "익명" // 값이 없으면 "익명" 기본값 사용
 
-                    val updatedItem = item.copy(name = nameValue) // 기존 객체에 name 값 업데이트
+                    var tCheck = false
+                    var fCheck = false
+                    if (AuthRepository().getCurrentUser() != null) {
+                        val user = AuthRepository().getCurrentUser()?.email?.substringBefore("@")
+                        val (isFound, pushKey) = checkDatabase(user, child.key.toString())
+
+                        if (isFound) {
+                            val (tCheckStatus, fCheckStatus) = getCheckStatus(FirebaseDatabase.getInstance().reference, user, pushKey!!)
+                            tCheck = tCheckStatus ?: false
+                            fCheck = fCheckStatus ?: false
+                        }
+                    }
+
+                    val updatedItem = item.copy(
+                        name = nameValue,
+                        t_check = tCheck,
+                        f_check = fCheck
+                    )
                     dataList.add(updatedItem)
                 }
 
             }
+
             dataList // 가져온 데이터를 반환
         }
         /*
@@ -87,6 +117,22 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         )
 
          */
+    }
+
+    // SearchItem을 업데이트하는 함수
+    fun updateCheckNum(push: String, tNum: Int, fNum: Int,tCheck:Boolean,fCheck:Boolean) {
+        // 해당 push 값을 가진 아이템만 업데이트
+        val updatedList = searchItems.value?.map { searchItem ->
+            if (searchItem.push == push) {
+                // 아이템이 찾았으면 그 값만 업데이트
+                searchItem.copy(t_num = searchItem.t_num!! + tNum, f_num = searchItem.f_num!! + fNum, t_check = tCheck, f_check = fCheck)
+            } else {
+                // 그렇지 않으면 그대로 유지
+                searchItem
+            }
+        }
+        // 업데이트된 리스트를 searchItems에 반영
+        searchItems.value = updatedList!!
     }
 
     private val searchItemsMy = MutableLiveData<List<SearchItem>>()  // 마이 데이터
@@ -134,8 +180,24 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
                         val nameValue = databaseReference3.get().await().getValue(String::class.java) ?: "익명" // 값이 없으면 "익명" 기본값 사용
 
-                        val updatedItem = item.copy(name = nameValue) // 기존 객체에 name 값 업데이트
-                        dataList.add(updatedItem) // 수정된 아이템을 dataList에 추가
+                        var tCheck = false
+                        var fCheck = false
+
+                        val (isFound, pushKey) = checkDatabase(id, value.toString())
+
+                        if (isFound) {
+                            val (tCheckStatus, fCheckStatus) = getCheckStatus(FirebaseDatabase.getInstance().reference, id, pushKey!!)
+                            tCheck = tCheckStatus ?: false
+                            fCheck = fCheckStatus ?: false
+                        }
+
+                        val updatedItem = item.copy(
+                            name = nameValue,
+                            t_check = tCheck,
+                            f_check = fCheck
+                        )
+                        dataList.add(updatedItem)
+
                     }
                 }
 
@@ -154,6 +216,49 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
          */
     }
+
+    // SearchItem을 업데이트하는 함수
+    fun updateMyCheckNum(push: String, tNum: Int, fNum: Int,tCheck:Boolean,fCheck:Boolean) {
+        // 해당 push 값을 가진 아이템만 업데이트
+        val updatedList = searchItemsMy.value?.map { searchItem ->
+            if (searchItem.push == push) {
+                // 아이템이 찾았으면 그 값만 업데이트
+                searchItem.copy(t_num = searchItem.t_num!! + tNum, f_num = searchItem.f_num!! + fNum, t_check = tCheck, f_check = fCheck)
+            } else {
+                // 그렇지 않으면 그대로 유지
+                searchItem
+            }
+        }
+        // 업데이트된 리스트를 searchItems에 반영
+        searchItemsMy.value = updatedList!!
+    }
+    suspend fun getCheckStatus(db: DatabaseReference, id: String?, pushKey: String): Pair<Boolean?, Boolean?> {
+        return suspendCancellableCoroutine { continuation ->
+            db.child("id").child(id.toString()).child("check").child(pushKey).child("check")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val value = snapshot.value?.toString()
+
+                        if (value == null) {
+                            // 값이 없으면 null 반환
+                            continuation.resume(Pair(null, null))
+                        } else {
+                            // 값이 있는 경우 true는 tCheck, false는 fCheck로 반환
+                            val isTrue = value.toBoolean()
+                            val tCheck = if (isTrue) true else false
+                            val fCheck = if (isTrue) false else true
+                            continuation.resume(Pair(tCheck, fCheck))
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        // Firebase 요청 실패 시 null 반환
+                        Log.e("FirebaseError", "Failed to get check value: ${error.message}")
+                        continuation.resume(Pair(null, null))
+                    }
+                })
+        }
+    }
 }
 
 data class SearchItem(
@@ -166,6 +271,8 @@ data class SearchItem(
     val info: String? = "",
     val t_num: Int? = 0,
     val f_num: Int? = 0,
+    val t_check: Boolean? = false,
+    val f_check: Boolean? = false,
     //val reple: ArrayList<RepleItem>
 )
 

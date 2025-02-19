@@ -48,6 +48,7 @@ val TOP_LEVEL_DESTINATIONS= listOf(
         titleTextId = R.string.feature_check_title,
         route = CheckRoute,
     ),
+    /*
     TopLevelRoute(
         selectedIcon = BnjIcons.ExchangeSelected,
         unselectedIcon = BnjIcons.ExchangeUnSelected,
@@ -55,6 +56,8 @@ val TOP_LEVEL_DESTINATIONS= listOf(
         titleTextId = R.string.feature_exchange_title,
         route = ExchangeRoute,
     ),
+
+     */
     TopLevelRoute(
         selectedIcon = BnjIcons.UserSelected,
         unselectedIcon = BnjIcons.UserUnSelected,

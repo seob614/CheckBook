@@ -54,7 +54,7 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                     .background(Color.White) // 배경색 설정
             ) {
                 if (currentUser != null)
-                    SearchListView(searchViewModel, navController, "", myInfoItem.id.toString())
+                    SearchListView(searchViewModel, myInfoViewModel, navController, "", myInfoItem.id.toString())
                 else
                     "로그인이 필요합니다"
             }

@@ -1,6 +1,7 @@
 package com.example.checkbook.ui.navigation.search
 
 import android.annotation.SuppressLint
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,9 +27,16 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,18 +50,31 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.checkbook.R
 import com.example.checkbook.TopBarWithBackButton
+import com.example.checkbook.database.checkDatabase
+import com.example.checkbook.database.checkSetDatabase
 import com.example.checkbook.listview.SearchListView
 import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.mvi.MainViewModel
 import com.example.checkbook.ui.theme.CheckBookTheme
+import com.example.checkbook.viewmodel.MyInfoViewModel
+import kotlinx.coroutines.launch
 
 const val DetailInfoRoute = "detail_info_route"
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun DetailInfoScreen(searchViewModel: SearchViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
-    val searchItem = searchViewModel.selectedSearchItem
+fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
+    val push = navBackStackEntry?.arguments?.getString("push")
     val data = navBackStackEntry?.arguments?.getString("data_key")
+    val isMyData = navBackStackEntry?.arguments?.getBoolean("isMyData")
+
+    val items by if (isMyData?:false) {
+        searchViewModel.itemsMy.observeAsState(emptyList())
+    } else {
+        searchViewModel.items.observeAsState(emptyList())
+    }
+
+    val searchItem = items.find { it.push == push }
 
     BackHandler {
         navController.popBackStack()
@@ -70,6 +91,10 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, navController: NavControl
 
         },
         content = {
+            val context = LocalContext.current
+            val currentUser by myInfoViewModel.currentUser.observeAsState()
+            val coroutineScope = rememberCoroutineScope()
+            var isLoading by remember { mutableStateOf(false) }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -202,11 +227,43 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, navController: NavControl
                                 .fillMaxHeight()
                                 .weight(1f)
                                 .clickable {
-                                    // 클릭 이벤트 처리
-                                    println("Card clicked!")
+                                    if (isLoading) return@clickable
+                                    if (currentUser != null){
+                                        isLoading = true
+                                        coroutineScope.launch {
+                                            val user = currentUser?.email?.substringBefore("@")
+                                            val (set_isFound, set_pushKey) = checkDatabase(user, searchItem?.push)
+                                            checkSetDatabase(
+                                                user,
+                                                false,
+                                                set_isFound,
+                                                set_pushKey,
+                                                searchItem?.push,
+                                                onError = { errorMessage ->
+                                                    isLoading = false
+                                                    Toast.makeText(context, "데이터베이스 오류2", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onSuccess = { now_num, opposite_num,now_check, opposite_check ->
+                                                    if (isMyData?:false) {
+                                                        searchViewModel.updateMyCheckNum(searchItem?.push.toString(),opposite_num,now_num,opposite_check,now_check)
+                                                    } else {
+                                                        searchViewModel.updateCheckNum(searchItem?.push.toString(),opposite_num,now_num,opposite_check,now_check)
+                                                    }
+
+                                                    isLoading = false
+                                                }
+                                            )
+                                        }
+                                    }else{
+                                        Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                             colors = CardDefaults.cardColors(
-                                containerColor = colorResource(id = R.color.f_color)
+                                containerColor = colorResource(
+                                    id = if(searchItem?.f_check ?: false)
+                                        R.color.f_color
+                                    else
+                                        R.color.f_color2)
                             ),
                             shape = RoundedCornerShape(
                                 topStart = 0.dp,  // 왼쪽 상단
@@ -255,11 +312,43 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, navController: NavControl
                                 .fillMaxHeight()
                                 .weight(1f)
                                 .clickable {
-                                    // 클릭 이벤트 처리
-                                    println("Card clicked!")
+                                    if (isLoading) return@clickable
+                                    if (currentUser != null){
+                                        isLoading = true
+                                        coroutineScope.launch {
+                                            val user = currentUser?.email?.substringBefore("@")
+                                            val (set_isFound, set_pushKey) = checkDatabase(user, searchItem?.push)
+                                            checkSetDatabase(
+                                                user,
+                                                true,
+                                                set_isFound,
+                                                set_pushKey,
+                                                searchItem?.push,
+                                                onError = { errorMessage ->
+                                                    isLoading = false
+                                                    Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onSuccess = { now_num, opposite_num,now_check, opposite_check ->
+                                                    if (isMyData?:false) {
+                                                        searchViewModel.updateMyCheckNum(searchItem?.push.toString(),now_num,opposite_num,now_check,opposite_check)
+                                                    } else {
+                                                        searchViewModel.updateCheckNum(searchItem?.push.toString(),now_num,opposite_num,now_check,opposite_check)
+                                                    }
+
+                                                    isLoading = false
+                                                }
+                                            )
+                                        }
+                                    }else{
+                                        Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                             colors = CardDefaults.cardColors(
-                                containerColor = colorResource(id = R.color.t_color)
+                                containerColor = colorResource(
+                                    id = if(searchItem?.t_check ?: false)
+                                        R.color.t_color
+                                    else
+                                        R.color.t_color2)
                             ),
                             shape = RoundedCornerShape(
                                 topStart = 0.dp,  // 왼쪽 상단
@@ -317,8 +406,9 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, navController: NavControl
 fun DetailInfoComposablePreview() {
     val navController = rememberNavController()
     val searchViewModel = SearchViewModel()
+    val myInfoViewModel = MyInfoViewModel()
     val navBackStackEntry: NavBackStackEntry? = null
     CheckBookTheme{
-        DetailInfoScreen(searchViewModel, navController,navBackStackEntry)
+        DetailInfoScreen(searchViewModel,myInfoViewModel, navController,navBackStackEntry)
     }
 }

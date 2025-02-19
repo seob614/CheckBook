@@ -48,12 +48,13 @@ import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.mvi.MainViewModel
 import com.example.checkbook.ui.navigation.search.SearchInfoRoute
 import com.example.checkbook.ui.theme.CheckBookTheme
+import com.example.checkbook.viewmodel.MyInfoViewModel
 
 @Serializable
 object SearchRoute
 
 @Composable
-fun SearchScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, navController: NavController) {
+fun SearchScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController) {
     var userInput by remember {
         mutableStateOf(TextFieldValue())
     }
@@ -113,7 +114,8 @@ fun SimpleComposablePreview() {
     val navController = rememberNavController()
     val mainViewModel = MainViewModel()
     val searchViewModel = SearchViewModel()
+    val myInfoViewModel = MyInfoViewModel()
     CheckBookTheme{
-        SearchScreen(mainViewModel, searchViewModel, navController)
+        SearchScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
     }
 }

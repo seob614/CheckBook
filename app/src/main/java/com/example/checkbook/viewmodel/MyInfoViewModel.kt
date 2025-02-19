@@ -97,7 +97,7 @@ data class MyInfoItem(
     val uid: String? = null,
     val info: ArrayList<String>? = ArrayList(),
     val reple: ArrayList<String>? = ArrayList(),
-    val check: ArrayList<String>? = ArrayList()
+    val check: Map<String, Map<String, Any>>? = null
     //val reple: ArrayList<RepleItem>
 )
 

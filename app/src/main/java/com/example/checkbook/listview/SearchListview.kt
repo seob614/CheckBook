@@ -1,5 +1,6 @@
 package com.example.checkbook.listview
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,10 +33,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,11 +52,16 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.example.checkbook.R
+import com.example.checkbook.database.checkDatabase
+import com.example.checkbook.database.checkSetDatabase
+import com.example.checkbook.database.infoSetDatabase
 import com.example.checkbook.ui.navigation.search.DetailInfoRoute
 import com.example.checkbook.ui.navigation.search.SearchInfoRoute
+import com.example.checkbook.viewmodel.MyInfoViewModel
+import kotlinx.coroutines.launch
 
 @Composable
-fun SearchListView(searchViewModel: SearchViewModel, navController: NavController, data: String, id:String) {
+fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String) {
 
     val isMyData = id.isNotEmpty()
 
@@ -68,9 +79,6 @@ fun SearchListView(searchViewModel: SearchViewModel, navController: NavControlle
         searchViewModel.items.observeAsState(emptyList())
     }
 
-
-
-
     LazyColumn(
         modifier = Modifier
             .padding(top = 56.dp)
@@ -83,7 +91,10 @@ fun SearchListView(searchViewModel: SearchViewModel, navController: NavControlle
                 navController = navController,  // navController 전달
                 searchItem = item,  // SearchItem 객체 전달
                 searchViewModel = searchViewModel,
-                data = data
+                myInfoViewModel = myInfoViewModel,
+                data = data,
+                isMyData = isMyData,
+                id = id
             )
             /*
             SearchListItem(navController = navController, push = item.push, id = item.id, name = item.name, profile = item.profile, date = item.date,title = item.title,
@@ -98,7 +109,10 @@ fun SearchListItem(
     navController: NavController,
     searchItem: SearchItem,
     searchViewModel: SearchViewModel,
-    data: String
+    myInfoViewModel: MyInfoViewModel,
+    data: String,
+    isMyData: Boolean,
+    id: String
     /*
     push: String? = null,
     id: String? = null,
@@ -111,13 +125,16 @@ fun SearchListItem(
     f_num: Int? = 0,
      */
 ) {
+    val context = LocalContext.current
+    val currentUser by myInfoViewModel.currentUser.observeAsState()
+    val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .padding(4.dp)
             .clickable {
                 // 클릭 이벤트 처리
-                searchViewModel.selectedSearchItem = searchItem
-                navController.navigate("$DetailInfoRoute/${data}")
+                navController.navigate("$DetailInfoRoute/${data}/${isMyData}/${searchItem.push}")
             },
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
@@ -224,10 +241,43 @@ fun SearchListItem(
                     .fillMaxHeight()
                     .weight(1f)
                     .clickable {
-                        // 클릭 이벤트 처리
+                        if (isLoading) return@clickable
+                        if (currentUser != null){
+                            isLoading = true
+                            coroutineScope.launch {
+                                val user = currentUser?.email?.substringBefore("@")
+                                val (set_isFound, set_pushKey) = checkDatabase(user, searchItem.push)
+                                checkSetDatabase(
+                                    user,
+                                    false,
+                                    set_isFound,
+                                    set_pushKey,
+                                    searchItem.push,
+                                    onError = { errorMessage ->
+                                        isLoading = false
+                                        Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onSuccess = { now_num, opposite_num,now_check, opposite_check ->
+                                        if (isMyData) {
+                                            searchViewModel.updateMyCheckNum(searchItem.push.toString(),opposite_num,now_num,opposite_check,now_check)
+                                        } else {
+                                            searchViewModel.updateCheckNum(searchItem.push.toString(),opposite_num,now_num,opposite_check,now_check)
+                                        }
+
+                                        isLoading = false
+                                    }
+                                )
+                            }
+                        }else{
+                            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                        }
                     },
                 colors = CardDefaults.cardColors(
-                    containerColor = colorResource(id = R.color.f_color)
+                    containerColor = colorResource(
+                        id = if(searchItem.f_check ?: false)
+                            R.color.f_color
+                        else
+                            R.color.f_color2)
                 ),
                 shape = RoundedCornerShape(
                     topStart = 0.dp,  // 왼쪽 상단
@@ -276,10 +326,43 @@ fun SearchListItem(
                     .fillMaxHeight()
                     .weight(1f)
                     .clickable {
-                        // 클릭 이벤트 처리
+                        if (isLoading) return@clickable
+                        if (currentUser != null){
+                            isLoading = true
+                            coroutineScope.launch {
+                                val user = currentUser?.email?.substringBefore("@")
+                                val (set_isFound, set_pushKey) = checkDatabase(user, searchItem.push)
+                                checkSetDatabase(
+                                    user,
+                                    true,
+                                    set_isFound,
+                                    set_pushKey,
+                                    searchItem.push,
+                                    onError = { errorMessage ->
+                                        isLoading = false
+                                        Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onSuccess = { now_num, opposite_num,now_check, opposite_check ->
+                                        if (isMyData) {
+                                            searchViewModel.updateMyCheckNum(searchItem.push.toString(),now_num,opposite_num,now_check,opposite_check)
+                                        } else {
+                                            searchViewModel.updateCheckNum(searchItem.push.toString(),now_num,opposite_num,now_check,opposite_check)
+                                        }
+
+                                        isLoading = false
+                                    }
+                                )
+                            }
+                        }else{
+                            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                        }
                     },
                 colors = CardDefaults.cardColors(
-                    containerColor = colorResource(id = R.color.t_color)
+                    containerColor = colorResource(
+                        id = if(searchItem.t_check ?: false)
+                            R.color.t_color
+                        else
+                            R.color.t_color2)
                 ),
                 shape = RoundedCornerShape(
                     topStart = 0.dp,  // 왼쪽 상단

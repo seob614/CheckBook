@@ -234,7 +234,7 @@ private fun MainBottomNavHost(
         startDestination = SearchRoute,
     ) {
         composable<SearchRoute> {
-            SearchScreen(mainViewModel, searchViewModel, navController)
+            SearchScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
         }
         composable<CheckRoute> {
             CheckScreen()
@@ -251,14 +251,19 @@ private fun MainBottomNavHost(
             SearchInfoScreen(
                 mainViewModel,
                 searchViewModel,
+                myInfoViewModel,
                 navController,
                 backStackEntry
             )
         }
-        composable("$DetailInfoRoute/{data_key}",
-            arguments = listOf(navArgument("data_key") { type = NavType.StringType })) { backStackEntry ->
+        composable("$DetailInfoRoute/{data_key}/{isMyData}/{push}",
+            arguments = listOf(
+                navArgument("data_key") { type = NavType.StringType },
+                navArgument("isMyData") { type = NavType.BoolType },
+                navArgument("push") { type = NavType.StringType })) { backStackEntry ->
             DetailInfoScreen(
                 searchViewModel,
+                myInfoViewModel,
                 navController,
                 backStackEntry
             )
@@ -347,7 +352,8 @@ fun SimpleComposablePreview() {
     val navController = rememberNavController()
     val mainViewModel = MainViewModel()
     val searchViewModel = SearchViewModel()
+    val myInfoViewModel = MyInfoViewModel()
     CheckBookTheme{
-        SearchScreen(mainViewModel, searchViewModel, navController)
+        SearchScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
     }
 }

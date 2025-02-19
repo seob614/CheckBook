@@ -162,7 +162,6 @@ fun CreateInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewMo
                                 val user = currentUser?.email?.substringBefore("@") ?: null
                                 isLoading = false
                                 if (user != null) {
-                                    // 업로드 성공
                                     coroutineScope.launch {
                                         infoSetDatabase(
                                             user,
