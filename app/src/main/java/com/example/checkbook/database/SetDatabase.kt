@@ -8,7 +8,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.checkbook.auth.auth
-import com.example.checkbook.viewmodel.MyInfoItem
+import com.example.checkbook.listview.SearchViewModel
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
@@ -112,7 +112,7 @@ suspend fun getCheckValue(db: DatabaseReference, id: String?, pushKey: String): 
     }
 }
 
-suspend fun checkSetDatabase(id: String?, check: Boolean, isFound: Boolean, pushKey: String?, info_push: String?, onError: (String) -> Unit, onSuccess: (now_num:Int,opposite_num:Int,now_check:Boolean, opposite_check:Boolean) -> Unit) {
+suspend fun checkSetDatabase(id: String?, check: Boolean, isFound: Boolean, pushKey: String?, info_push: String?, searchViewModel:SearchViewModel, isMyData:Boolean, onError: (String) -> Unit, onSuccess: (now_num:Int,opposite_num:Int,now_check:Boolean, opposite_check:Boolean) -> Unit) {
     val db = FirebaseDatabase.getInstance().reference
 
     try {
@@ -134,6 +134,13 @@ suspend fun checkSetDatabase(id: String?, check: Boolean, isFound: Boolean, push
                 db.child("info").child(info_push.toString()).updateChildren(updates2).await()
                 db.child("id").child(id.toString()).child("check").child(pushKey.toString()).removeValue()
                 onSuccess(-1,0,false,false)
+
+                /*
+                if (isMyData){
+                    searchViewModel.updateMyItem(pushKey!!)
+                }
+                 */
+
             } else {
                 // 반대 checkRef의 값을 가져옴
                 val oppositeCheckRef = if (checkRef == "t_num") "f_num" else "t_num"

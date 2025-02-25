@@ -1,9 +1,14 @@
 package com.example.checkbook.mvi
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -12,26 +17,43 @@ class MainViewModel @Inject constructor() : ViewModel() {
     private val _state = MutableStateFlow(ScreenState(isLoading = false))
     val state: StateFlow<ScreenState> = _state
 
+    private val _navigationEvent = MutableSharedFlow<ScreenIntent>()
+    val navigationEvent = _navigationEvent.asSharedFlow()
+
     init {
         // 초기 상태 설정
         _state.value = ScreenState(isLoading = false)
     }
 
-    // 화면 전환 상태를 처리하는 함수
     fun onIntent(intent: ScreenIntent) {
         when (intent) {
             is ScreenIntent.LoadData -> {
-                // 데이터 로딩 처리
                 _state.value = ScreenState(isLoading = true)
-                // 데이터 로딩 후 상태 업데이트
                 _state.value = ScreenState(isLoading = false, data = "Loaded Data")
             }
             is ScreenIntent.NavigateToNextScreen -> {
-                // 화면 전환 처리
-                // 예: navController.navigate("next_screen")
+                viewModelScope.launch {
+                    _navigationEvent.emit(intent) // NavigateToNextScreen 이벤트 발생
+                }
+            }
+            is ScreenIntent.NavigateToSearchInfo -> { // SearchInfoRoute 처리
+                viewModelScope.launch {
+                    _navigationEvent.emit(intent)
+                }
+            }
+            is ScreenIntent.NavigateToMyInfo -> { // SearchInfoRoute 처리
+                viewModelScope.launch {
+                    _navigationEvent.emit(intent)
+                }
+            }
+            is ScreenIntent.NavigateToDetail -> {
+                viewModelScope.launch {
+                    _navigationEvent.emit(intent) // NavigateToDetail 이벤트 발생
+                }
             }
         }
     }
+
 
     private val _showDetailNavHost = MutableStateFlow(false)
     val showDetailNavHost: StateFlow<Boolean> = _showDetailNavHost

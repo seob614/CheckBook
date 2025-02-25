@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,7 @@ import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.ui.navigation.search.SearchInfoRoute
 import com.example.checkbook.ui.navigation.search.SearchInfoScreen
 import com.example.checkbook.mvi.MainViewModel
+import com.example.checkbook.mvi.ScreenIntent
 import com.example.checkbook.ui.navigation.auth.CodeRoute
 import com.example.checkbook.ui.navigation.auth.CodeScreen
 import com.example.checkbook.ui.navigation.auth.RegisterRoute
@@ -100,7 +102,19 @@ class MainActivity : ComponentActivity() {
                 val myInfoViewModel: MyInfoViewModel = hiltViewModel()
                 val showDetailNavHost by mainViewModel.showDetailNavHost.collectAsState()
 
-
+                LaunchedEffect(Unit) {
+                    mainViewModel.navigationEvent.collect { intent ->
+                        when (intent) {
+                            is ScreenIntent.NavigateToSearchInfo  -> {
+                                mainNavController.navigate("$SearchInfoRoute/${intent.data_key}")
+                            }
+                            is ScreenIntent.NavigateToMyInfo  -> {
+                                mainNavController.navigate("$MyInfoRoute/${intent.info}")
+                            }
+                            else -> Unit
+                        }
+                    }
+                }
 
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
                     Scaffold(
@@ -210,7 +224,7 @@ fun BottomNavigationBar(
                     )
                 },
                 selected = currentDestination?.hierarchy?.any { it.hasRoute(topLevelRoute.route::class) } == true,
-                onClick ={navigateToTopLevelDestination(topLevelRoute)},
+                onClick ={ navigateToTopLevelDestination(topLevelRoute) },
                 modifier =Modifier.background(color = Color.White),
                 alwaysShowLabel = true
 
@@ -237,7 +251,7 @@ private fun MainBottomNavHost(
             SearchScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
         }
         composable<CheckRoute> {
-            CheckScreen()
+            CheckScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
         }
         composable<ExchangeRoute> {
             ExchangeScreen()
@@ -256,6 +270,7 @@ private fun MainBottomNavHost(
                 backStackEntry
             )
         }
+
         composable("$DetailInfoRoute/{data_key}/{isMyData}/{push}",
             arguments = listOf(
                 navArgument("data_key") { type = NavType.StringType },
@@ -285,8 +300,10 @@ private fun MainBottomNavHost(
         composable("$CreateInfoRoute") {
             CreateInfoScreen(mainViewModel, myInfoViewModel , navController)
         }
-        composable("$MyInfoRoute") {
-            MyInfoScreen(mainViewModel, myInfoViewModel, searchViewModel , navController)
+        composable("$MyInfoRoute/{info}",
+            arguments = listOf(
+                navArgument("info") { type = NavType.StringType })) { backStackEntry ->
+            MyInfoScreen(mainViewModel, myInfoViewModel, searchViewModel , navController, backStackEntry)
         }
     }
 }

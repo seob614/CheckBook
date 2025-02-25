@@ -46,6 +46,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.checkbook.R
 import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.mvi.MainViewModel
+import com.example.checkbook.mvi.ScreenIntent
 import com.example.checkbook.ui.navigation.search.SearchInfoRoute
 import com.example.checkbook.ui.theme.CheckBookTheme
 import com.example.checkbook.viewmodel.MyInfoViewModel
@@ -88,7 +89,8 @@ fun SearchScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, 
                         tint = Color.Unspecified,
                         modifier = Modifier.size(28.dp).clickable(onClick = {
                             if (userInput.text.isNotEmpty()) {
-                                navController.navigate("$SearchInfoRoute/${userInput.text}")
+                                mainViewModel.onIntent(ScreenIntent.NavigateToSearchInfo(userInput.text))
+                                //navController.navigate("$SearchInfoRoute/${userInput.text}")
                                 mainViewModel.showDetail() // 디테일 화면 표시 상태 업데이트
                                 searchViewModel.yetDatabase()
                             }else{

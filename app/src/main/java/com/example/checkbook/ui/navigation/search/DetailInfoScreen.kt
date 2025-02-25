@@ -27,6 +27,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -69,7 +70,7 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
     val isMyData = navBackStackEntry?.arguments?.getBoolean("isMyData")
 
     val items by if (isMyData?:false) {
-        searchViewModel.itemsMy.observeAsState(emptyList())
+        searchViewModel.itemsMy.collectAsState(emptyList())
     } else {
         searchViewModel.items.observeAsState(emptyList())
     }
@@ -239,6 +240,8 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                                 set_isFound,
                                                 set_pushKey,
                                                 searchItem?.push,
+                                                searchViewModel,
+                                                isMyData?:false,
                                                 onError = { errorMessage ->
                                                     isLoading = false
                                                     Toast.makeText(context, "데이터베이스 오류2", Toast.LENGTH_SHORT).show()
@@ -324,6 +327,8 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                                 set_isFound,
                                                 set_pushKey,
                                                 searchItem?.push,
+                                                searchViewModel,
+                                                isMyData?:false,
                                                 onError = { errorMessage ->
                                                     isLoading = false
                                                     Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()

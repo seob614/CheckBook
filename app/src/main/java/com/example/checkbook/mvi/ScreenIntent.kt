@@ -4,4 +4,7 @@ package com.example.checkbook.mvi
 sealed class ScreenIntent {
     object LoadData : ScreenIntent()
     object NavigateToNextScreen : ScreenIntent()
+    data class NavigateToSearchInfo(val data_key: String) : ScreenIntent()
+    data class NavigateToMyInfo(val info: String) : ScreenIntent()
+    data class NavigateToDetail(val data: String, val isMyData: Boolean, val push: String?) : ScreenIntent()
 }

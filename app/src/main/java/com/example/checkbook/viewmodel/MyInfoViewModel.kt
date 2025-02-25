@@ -48,12 +48,14 @@ class MyInfoViewModel @Inject constructor() : ViewModel() {
         }
     }
 
+    private val _myInfoItem = MutableLiveData<MyInfoItem>()
+    val myInfoItem: LiveData<MyInfoItem> = _myInfoItem
+
     fun signOut() {
         authRepository.signOut()
         _currentUser.value = null
+        _myInfoItem.value  = MyInfoItem()
     }
-    private val _myInfoItem = MutableLiveData<MyInfoItem>()
-    val myInfoItem: LiveData<MyInfoItem> = _myInfoItem
 
     private fun fetchDataFromFirebase(user: FirebaseUser) {
         val id = user.email?.substringBefore("@") ?:return

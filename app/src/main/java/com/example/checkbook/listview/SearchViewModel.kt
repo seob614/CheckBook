@@ -34,6 +34,13 @@ class SearchViewModel @Inject constructor() : ViewModel() {
     // Firebase에서 아이템을 가져오는 로직
     private val searchItems = MutableLiveData<List<SearchItem>>()
     val items: LiveData<List<SearchItem>> = searchItems
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    fun setLoading(isLoading: Boolean) {
+        _isLoading.value = isLoading
+    }
     /*
     데이터 변경시 자동 호출
     val items: LiveData<List<SearchItem>> = liveData {
@@ -53,12 +60,12 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
     fun loadData() {
         if (_isDatabase) return
-        //searchItems.postValue(emptyList()) //기존데이터 초기화
-
+        setLoading(true)
         viewModelScope.launch {
             val data = fetchDataFromFirebase()
             searchItems.postValue(data)
             _isDatabase = true
+            setLoading(false)
         }
     }
 
@@ -135,8 +142,81 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         searchItems.value = updatedList!!
     }
 
-    private val searchItemsMy = MutableLiveData<List<SearchItem>>()  // 마이 데이터
-    val itemsMy: LiveData<List<SearchItem>> = searchItemsMy
+    private val checkItems = MutableLiveData<List<SearchItem>>()
+    val check_items: LiveData<List<SearchItem>> = checkItems
+
+    private var _isDatabase_check = false
+    val isDatabase_check: Boolean = _isDatabase_check
+
+    fun yetDatabase_check() {
+        _isDatabase_check = false
+    }
+
+    private val _Change_check = MutableLiveData(false)
+    val change_check: LiveData<Boolean> = _Change_check
+
+    fun setChange_check(value: Boolean) {
+        _Change_check.value = value
+    }
+
+    fun loadData_check() {
+        if (_isDatabase_check) return
+        setLoading(true)
+        viewModelScope.launch {
+            val data = fetchDataFromFirebase_check()
+            checkItems.postValue(data)
+            _isDatabase_check = true
+            setLoading(false)
+        }
+    }
+
+    private suspend fun fetchDataFromFirebase_check(): List<SearchItem> {
+        // 실제 Firebase 데이터를 가져오는 코드
+
+        return withContext(Dispatchers.IO) {
+            Log.d("firebase", "firebase")
+            val dataList = mutableListOf<SearchItem>()
+            val databaseReference = Firebase.database.getReference("info") // Firebase 경로
+
+            // Firebase 데이터를 한 번만 가져옴
+            val snapshot = databaseReference.get().await() // KTX 확장을 사용해 비동기 작업을 동기적으로 처리
+            for (child in snapshot.children) {
+                if (dataList.size >= 10) break
+                val item = child.getValue(SearchItem::class.java) // Firebase 데이터를 SearchItem으로 매핑
+
+                if (item?.id != null) {
+                    val databaseReference2 = Firebase.database.getReference("id")
+                        .child(item.id).child("name") // name 경로
+
+                    val nameValue = databaseReference2.get().await().getValue(String::class.java) ?: "익명" // 값이 없으면 "익명" 기본값 사용
+
+                    var excludeItem = false
+
+                    if (AuthRepository().getCurrentUser() != null) {
+                        val user = AuthRepository().getCurrentUser()?.email?.substringBefore("@")
+                        val (isFound, pushKey) = checkDatabase(user, child.key.toString())
+
+                        if (isFound) {
+                            excludeItem = true
+                        }
+                    }
+
+                    if (!excludeItem) {
+                        val updatedItem = item.copy(
+                            name = nameValue,
+                        )
+                        dataList.add(updatedItem)
+                    }
+                }
+
+            }
+
+            dataList // 가져온 데이터를 반환
+        }
+    }
+
+    private val searchItemsMy = MutableStateFlow<List<SearchItem>>(emptyList())  // 마이 데이터
+    val itemsMy: StateFlow<List<SearchItem>> = searchItemsMy
 
     private var _isDatabase_my = false
     val isDatabase_my: Boolean = _isDatabase_my
@@ -145,29 +225,38 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         _isDatabase_my = false
     }
 
-    fun loadData_my(id: String) {
+    fun loadData_my(id: String,list:ArrayList<String>) {
         if (_isDatabase_my) return
 
-        viewModelScope.launch {
-            val data = fetchDataFromFirebase_my(id)
-            searchItemsMy.postValue(data)
+        setLoading(true)
+
+        if (list.isEmpty()) {
+            searchItemsMy.value = emptyList()
+
             _isDatabase_my = true
+
+            setLoading(false)
+            return
+        }
+
+        viewModelScope.launch {
+            val data = fetchDataFromFirebase_my(id,list)
+            //searchItemsMy.postValue(data)
+            searchItemsMy.value = data
+            _isDatabase_my = true
+
+            setLoading(false)
         }
     }
 
-    private suspend fun fetchDataFromFirebase_my(id:String): List<SearchItem> {
+    private suspend fun fetchDataFromFirebase_my(id:String,list: ArrayList<String>): List<SearchItem> {
         // 실제 Firebase 데이터를 가져오는 코드
 
         return withContext(Dispatchers.IO) {
             Log.d("firebase", "firebase")
             val dataList = mutableListOf<SearchItem>()
-            val databaseReference = Firebase.database.getReference("id").child(id).child("info") // Firebase 경로
 
-            // Firebase 데이터를 한 번만 가져옴
-            val snapshot = databaseReference.get().await()
-            val infoList = snapshot.getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
-
-            infoList?.forEach { value ->
+            list?.forEach { value ->
                 val databaseReference2 = Firebase.database.getReference("info").child(value.toString())
 
                 val snapshot = databaseReference2.get().await()
@@ -190,31 +279,17 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                             tCheck = tCheckStatus ?: false
                             fCheck = fCheckStatus ?: false
                         }
-
                         val updatedItem = item.copy(
                             name = nameValue,
                             t_check = tCheck,
                             f_check = fCheck
                         )
                         dataList.add(updatedItem)
-
                     }
                 }
-
             }
             dataList // 가져온 데이터를 반환
         }
-        /*
-        return listOf(
-            SearchItem("seob614", "전문가","","2025년01월03일19시04분10초","jetpack compose란?",
-                "Jetpack Compose는 UI 개발을 간소화하기 위해 설계된 최신 툴킷",
-                10,2),
-            SearchItem("courr", "코알","","2025년01월03일07시12분18초","안드로이드는 어려워",
-                "안드로이드(영어: Android)는 스마트폰, 태블릿 PC 같은 터치스크린 모바일 장치 용으로 디자인된 운영 체제이자 수정된 리눅스 커널 버전을 비롯한 오픈 소스 소프트웨어에 기반을 둔 모바일 운영 체제다. 또한, 운영 체제와 미들웨어, 사용자 인터페이스 그리고 표준 응용 프로그램(웹 브라우저, 이메일 클라이언트, 단문 메시지 서비스(SMS), 멀티미디어 메시지 서비스(MMS) 등을 포함하고 있는 소프트웨어 스택이자 모바일 운영 체제이다. 안드로이드는 개발자들이 자바와 코틀린 언어로 응용 프로그램을 작성할 수 있게 하였으며, 컴파일된 바이트코드를 구동할 수 있는 런타임 라이브러리를 제공한다. 또한 안드로이드 소프트웨어 개발 키트(SDK)를 통해 응용 프로그램을 개발하는 데 필요한 각종 도구와 응용 프로그램 인터페이스(API)를 제공한다.",
-                20,1),
-        )
-
-         */
     }
 
     // SearchItem을 업데이트하는 함수
@@ -231,6 +306,10 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         }
         // 업데이트된 리스트를 searchItems에 반영
         searchItemsMy.value = updatedList!!
+    }
+    // SearchItem을 업데이트하는 함수
+    fun updateMyItem(push: String) {
+        searchItemsMy.value = searchItemsMy.value.filterNot { it.push == push }
     }
     suspend fun getCheckStatus(db: DatabaseReference, id: String?, pushKey: String): Pair<Boolean?, Boolean?> {
         return suspendCancellableCoroutine { continuation ->

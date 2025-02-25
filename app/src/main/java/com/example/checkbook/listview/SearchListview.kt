@@ -31,6 +31,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -61,20 +62,24 @@ import com.example.checkbook.viewmodel.MyInfoViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String) {
+fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String, list:ArrayList<String>) {
 
     val isMyData = id.isNotEmpty()
 
     LaunchedEffect(id) {  // id가 변경될 때마다 적절한 데이터 로드
         if (isMyData) {
-            searchViewModel.loadData_my(id)
+            if (list.isNotEmpty()){
+                searchViewModel.loadData_my(id,list)
+            } else {
+                searchViewModel.loadData_my(id,list)  // 리스트 초기화 함수
+            }
         } else {
             searchViewModel.loadData()
         }
     }
 
     val items by if (isMyData) {
-        searchViewModel.itemsMy.observeAsState(emptyList())
+        searchViewModel.itemsMy.collectAsState(emptyList())
     } else {
         searchViewModel.items.observeAsState(emptyList())
     }
@@ -240,8 +245,7 @@ fun SearchListItem(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(1f)
-                    .clickable {
-                        if (isLoading) return@clickable
+                    .clickable(enabled = !isLoading) {
                         if (currentUser != null){
                             isLoading = true
                             coroutineScope.launch {
@@ -253,6 +257,8 @@ fun SearchListItem(
                                     set_isFound,
                                     set_pushKey,
                                     searchItem.push,
+                                    searchViewModel,
+                                    isMyData,
                                     onError = { errorMessage ->
                                         isLoading = false
                                         Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
@@ -263,6 +269,7 @@ fun SearchListItem(
                                         } else {
                                             searchViewModel.updateCheckNum(searchItem.push.toString(),opposite_num,now_num,opposite_check,now_check)
                                         }
+                                        searchViewModel.setChange_check(true)
 
                                         isLoading = false
                                     }
@@ -325,8 +332,7 @@ fun SearchListItem(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(1f)
-                    .clickable {
-                        if (isLoading) return@clickable
+                    .clickable(enabled = !isLoading) {
                         if (currentUser != null){
                             isLoading = true
                             coroutineScope.launch {
@@ -338,6 +344,8 @@ fun SearchListItem(
                                     set_isFound,
                                     set_pushKey,
                                     searchItem.push,
+                                    searchViewModel,
+                                    isMyData,
                                     onError = { errorMessage ->
                                         isLoading = false
                                         Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
@@ -348,7 +356,7 @@ fun SearchListItem(
                                         } else {
                                             searchViewModel.updateCheckNum(searchItem.push.toString(),now_num,opposite_num,now_check,opposite_check)
                                         }
-
+                                        searchViewModel.setChange_check(true)
                                         isLoading = false
                                     }
                                 )

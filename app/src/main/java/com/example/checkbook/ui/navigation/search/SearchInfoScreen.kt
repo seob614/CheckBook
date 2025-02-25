@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +30,7 @@ import com.example.checkbook.mvi.MainViewModel
 import com.example.checkbook.ui.navigation.SearchScreen
 import com.example.checkbook.ui.theme.CheckBookTheme
 import com.example.checkbook.viewmodel.MyInfoViewModel
+import java.util.ArrayList
 
 const val SearchInfoRoute = "search_info_route"
 
@@ -34,6 +38,7 @@ const val SearchInfoRoute = "search_info_route"
 @Composable
 fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
     val data = navBackStackEntry?.arguments?.getString("data_key")
+    val isLoading by searchViewModel.isLoading.collectAsState()
 
     BackHandler {
         mainViewModel.hideDetail()
@@ -58,7 +63,18 @@ fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewMo
                     .fillMaxSize() // 전체 크기 차지
                     .background(Color.White) // 배경색 설정
             ) {
-                SearchListView(searchViewModel, myInfoViewModel, navController, data?:"검색어 없음", "") // SearchListView는 Box 안에 배치됨
+                if (isLoading) {
+                    // 로딩 중일 때 로딩 화면 표시
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                    )
+                }else{
+                    SearchListView(searchViewModel, myInfoViewModel, navController, data?:"검색어 없음", "",
+                        ArrayList()
+                    ) // SearchListView는 Box 안에 배치됨
+                }
+
             }
 
         }

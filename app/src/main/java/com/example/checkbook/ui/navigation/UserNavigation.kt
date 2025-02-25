@@ -43,6 +43,7 @@ import com.example.checkbook.auth.AuthRepository
 import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.viewmodel.MyInfoViewModel
 import com.example.checkbook.mvi.MainViewModel
+import com.example.checkbook.mvi.ScreenIntent
 import com.example.checkbook.ui.navigation.auth.SignInRoute
 import com.example.checkbook.ui.navigation.create.CreateInfoRoute
 import com.example.checkbook.ui.navigation.mylist.MyInfoRoute
@@ -215,7 +216,8 @@ fun UserScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, my
             modifier = Modifier
                 .padding(top = 15.dp, start = 13.dp, end = 13.dp)
                 .clickable {
-                    navController.navigate("$MyInfoRoute")
+                    mainViewModel.onIntent(ScreenIntent.NavigateToMyInfo("info"))
+                    //navController.navigate("$MyInfoRoute/info")
                     mainViewModel.showDetail() // 디테일 화면 표시 상태 업데이트
                     searchViewModel.yetDatabase_my()
                 }
@@ -261,8 +263,7 @@ fun UserScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, my
             modifier = Modifier
                 .padding(top = 13.dp, start = 15.dp, end = 15.dp)
                 .clickable {
-                    // 클릭 이벤트 처리
-                    println("Card clicked!")
+
                 }
                 .height(60.dp),
         ){
@@ -306,8 +307,10 @@ fun UserScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, my
             modifier = Modifier
                 .padding(top = 13.dp, start = 15.dp, end = 15.dp)
                 .clickable {
-                    // 클릭 이벤트 처리
-                    println("Card clicked!")
+                    mainViewModel.onIntent(ScreenIntent.NavigateToMyInfo("check"))
+                    //navController.navigate("$MyInfoRoute/check")
+                    mainViewModel.showDetail() // 디테일 화면 표시 상태 업데이트
+                    searchViewModel.yetDatabase_my()
                 }
                 .height(60.dp),
         ){
