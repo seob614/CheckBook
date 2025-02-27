@@ -22,12 +22,17 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,15 +56,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.checkbook.R
 import com.example.checkbook.database.checkDatabase
 import com.example.checkbook.database.checkSetDatabase
+import com.example.checkbook.dialog.RepleBottomSheetDialog
 import com.example.checkbook.listview.SearchItem
 import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.mvi.MainViewModel
 import com.example.checkbook.ui.theme.CheckBookTheme
 import com.example.checkbook.viewmodel.MyInfoViewModel
+import com.example.checkbook.viewmodel.RepleViewModel
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
 
@@ -68,7 +74,7 @@ object CheckRoute
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController) {
+fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, repleViewModel: RepleViewModel, navController: NavController) {
     val items by searchViewModel.check_items.observeAsState(emptyList())
 
     val isDatabaseCheck by searchViewModel.change_check.observeAsState(false)
@@ -77,6 +83,8 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
     var nextItemLoad by remember { mutableStateOf(false) }
     var shuffledItems by remember { mutableStateOf<List<SearchItem>>(emptyList()) } // 섞인 데이터를 보관할 리스트
     var currentIndex by remember { mutableStateOf(0) } // 현재 아이템 인덱스
+
+    val isBottomSheetVisible by repleViewModel.isBottomSheetVisible
 
     searchViewModel.loadData_check()
     LaunchedEffect(items) {
@@ -224,8 +232,7 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                             ){
                                 Card(
                                     modifier = Modifier.clickable {
-                                        // 클릭 이벤트 처리
-                                        println("Card clicked!")
+                                        repleViewModel.showBottomSheetDialog()
                                     }
                                         .padding(5.dp),
 
@@ -476,9 +483,19 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                 }
 
             }
+            RepleBottomSheetDialog(
+                isVisible = isBottomSheetVisible,
+                onClickCancel = {
+                    repleViewModel.hideBottomSheetDialog() // 바텀 시트 닫기
+                }
+            )
 
+            /*
+            if (customBottomSheetDialogState.list.isEmpty()) {
 
+            }
 
+             */
         }
     )
 }

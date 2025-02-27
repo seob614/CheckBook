@@ -5,25 +5,35 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,8 +53,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -86,6 +99,7 @@ import com.example.checkbook.ui.navigation.mylist.MyInfoRoute
 import com.example.checkbook.ui.navigation.mylist.MyInfoScreen
 import com.example.checkbook.ui.navigation.search.DetailInfoRoute
 import com.example.checkbook.ui.navigation.search.DetailInfoScreen
+import com.example.checkbook.viewmodel.RepleViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -100,6 +114,7 @@ class MainActivity : ComponentActivity() {
                 val mainViewModel: MainViewModel = hiltViewModel()
                 val searchViewModel: SearchViewModel = hiltViewModel()
                 val myInfoViewModel: MyInfoViewModel = hiltViewModel()
+                val repleViewModel: RepleViewModel = hiltViewModel()
                 val showDetailNavHost by mainViewModel.showDetailNavHost.collectAsState()
 
                 LaunchedEffect(Unit) {
@@ -144,6 +159,7 @@ class MainActivity : ComponentActivity() {
                             mainViewModel = mainViewModel,
                             searchViewModel = searchViewModel,
                             myInfoViewModel = myInfoViewModel,
+                            repleViewModel = repleViewModel,
                             navController = mainNavController,
                             modifier = Modifier.padding(innerPadding),
                         )
@@ -239,6 +255,7 @@ private fun MainBottomNavHost(
     mainViewModel: MainViewModel,
     searchViewModel : SearchViewModel,
     myInfoViewModel: MyInfoViewModel,
+    repleViewModel: RepleViewModel,
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
@@ -251,7 +268,7 @@ private fun MainBottomNavHost(
             SearchScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
         }
         composable<CheckRoute> {
-            CheckScreen(mainViewModel, searchViewModel, myInfoViewModel, navController)
+            CheckScreen(mainViewModel, searchViewModel, myInfoViewModel, repleViewModel, navController)
         }
         composable<ExchangeRoute> {
             ExchangeScreen()
@@ -271,11 +288,12 @@ private fun MainBottomNavHost(
             )
         }
 
-        composable("$DetailInfoRoute/{data_key}/{isMyData}/{push}",
+        composable("$DetailInfoRoute/{data_key}/{isMyData}/{push}/{info_type}",
             arguments = listOf(
                 navArgument("data_key") { type = NavType.StringType },
                 navArgument("isMyData") { type = NavType.BoolType },
-                navArgument("push") { type = NavType.StringType })) { backStackEntry ->
+                navArgument("push") { type = NavType.StringType },
+                navArgument("info_type") { type = NavType.StringType })) { backStackEntry ->
             DetailInfoScreen(
                 searchViewModel,
                 myInfoViewModel,
@@ -358,6 +376,67 @@ fun NameChangeDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("취소")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TopBarWithBackButton(
+    title: String,
+    onBackPressed: () -> Unit,
+    onMoreClick: () -> Unit,
+    isMyData: Boolean,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    TopAppBar(
+        modifier = Modifier.fillMaxWidth()
+            .height(64.dp),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = colorResource(R.color.main_color)
+        ),
+
+        title = { Text(text = title,color = Color.White,
+            modifier = Modifier.padding(top = 15.dp)) },
+        navigationIcon = {
+            IconButton(onClick = onBackPressed) {
+                Icon(Icons.Default.ArrowBack,
+                    contentDescription = "뒤로가기",
+                    tint = Color.White,
+                    modifier = Modifier.padding(top = 15.dp))
+            }
+        },
+        actions = { // 오른쪽 상단에 추가
+            IconButton(onClick = { expanded = true }) {
+                Icon(Icons.Default.MoreVert,
+                    contentDescription = "더보기",
+                    tint = Color.White,
+                    modifier = Modifier.padding(top = 15.dp))
+            }
+            Box(
+                modifier = Modifier
+                    .background(Color.White)
+                    .padding(top = 60.dp)
+            ) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isMyData) "삭제하기" else "신고하기") },
+                        onClick = {
+                            expanded = false
+                            onMoreClick()
+                        },
+                        colors = MenuDefaults.itemColors(
+                            textColor = Color.Black
+                        ),
+                        modifier = Modifier.background(Color.White)
+                    )
+                }
             }
         }
     )

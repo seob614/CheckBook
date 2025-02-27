@@ -71,7 +71,7 @@ fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewMo
                     )
                 }else{
                     SearchListView(searchViewModel, myInfoViewModel, navController, data?:"검색어 없음", "",
-                        ArrayList()
+                        ArrayList(),"검색"
                     ) // SearchListView는 Box 안에 배치됨
                 }
 

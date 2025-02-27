@@ -59,10 +59,11 @@ import com.example.checkbook.database.infoSetDatabase
 import com.example.checkbook.ui.navigation.search.DetailInfoRoute
 import com.example.checkbook.ui.navigation.search.SearchInfoRoute
 import com.example.checkbook.viewmodel.MyInfoViewModel
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 
 @Composable
-fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String, list:ArrayList<String>) {
+fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String, list:ArrayList<String>,info_type:String) {
 
     val isMyData = id.isNotEmpty()
 
@@ -99,6 +100,7 @@ fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoView
                 myInfoViewModel = myInfoViewModel,
                 data = data,
                 isMyData = isMyData,
+                info_type = info_type,
                 id = id
             )
             /*
@@ -117,6 +119,7 @@ fun SearchListItem(
     myInfoViewModel: MyInfoViewModel,
     data: String,
     isMyData: Boolean,
+    info_type:String,
     id: String
     /*
     push: String? = null,
@@ -134,12 +137,15 @@ fun SearchListItem(
     val currentUser by myInfoViewModel.currentUser.observeAsState()
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
+    var deleteItem by remember { mutableStateOf(false) }
+
+    deleteItem = if (searchItem.delete?:false) true else false
     Card(
         modifier = Modifier
             .padding(4.dp)
             .clickable {
                 // 클릭 이벤트 처리
-                navController.navigate("$DetailInfoRoute/${data}/${isMyData}/${searchItem.push}")
+                navController.navigate("$DetailInfoRoute/${data}/${isMyData}/${searchItem.push}/${info_type}")
             },
         colors = CardDefaults.cardColors(
             containerColor = Color.White,
@@ -173,7 +179,9 @@ fun SearchListItem(
                             id = R.drawable.bottom_user_on
                         ),
                         contentDescription = null,
-                        modifier = Modifier.size(40.dp).align(Alignment.CenterHorizontally),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .align(Alignment.CenterHorizontally),
                         tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.height(2.dp))
@@ -183,7 +191,9 @@ fun SearchListItem(
                         fontSize = 11.sp,
                         color = Color.Gray,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.height(18.dp).fillMaxWidth(),
+                        modifier = Modifier
+                            .height(18.dp)
+                            .fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -194,7 +204,10 @@ fun SearchListItem(
                     fontSize = 16.sp,
                     color = Color.Black,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxHeight().fillMaxWidth().padding(top = 4.dp),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                     textAlign = TextAlign.Start
                 )
             }
@@ -236,60 +249,34 @@ fun SearchListItem(
             }
 
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-        ) {
+        if (deleteItem){
             Card(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable(enabled = !isLoading) {
-                        if (currentUser != null){
+                        coroutineScope.launch {
                             isLoading = true
-                            coroutineScope.launch {
-                                val user = currentUser?.email?.substringBefore("@")
-                                val (set_isFound, set_pushKey) = checkDatabase(user, searchItem.push)
-                                checkSetDatabase(
-                                    user,
-                                    false,
-                                    set_isFound,
-                                    set_pushKey,
-                                    searchItem.push,
-                                    searchViewModel,
-                                    isMyData,
-                                    onError = { errorMessage ->
-                                        isLoading = false
-                                        Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
-                                    },
-                                    onSuccess = { now_num, opposite_num,now_check, opposite_check ->
-                                        if (isMyData) {
-                                            searchViewModel.updateMyCheckNum(searchItem.push.toString(),opposite_num,now_num,opposite_check,now_check)
-                                        } else {
-                                            searchViewModel.updateCheckNum(searchItem.push.toString(),opposite_num,now_num,opposite_check,now_check)
-                                        }
-                                        searchViewModel.setChange_check(true)
-
-                                        isLoading = false
-                                    }
-                                )
-                            }
-                        }else{
-                            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                            searchViewModel.deleteMyCheck(
+                                id,
+                                searchItem.push!!,
+                                onError = { errorMessage ->
+                                    Toast.makeText(context,errorMessage,Toast.LENGTH_SHORT).show()
+                                    isLoading = false
+                                },
+                                onSuccess = {
+                                    Toast.makeText(context,"삭제되었습니다.",Toast.LENGTH_SHORT).show()
+                                    isLoading = false
+                                })
                         }
                     },
                 colors = CardDefaults.cardColors(
-                    containerColor = colorResource(
-                        id = if(searchItem.f_check ?: false)
-                            R.color.f_color
-                        else
-                            R.color.f_color2)
+                    containerColor = colorResource(id = R.color.gray)
                 ),
                 shape = RoundedCornerShape(
                     topStart = 0.dp,  // 왼쪽 상단
                     topEnd = 0.dp,    // 오른쪽 상단
-                    bottomEnd = 0.dp,  // 오른쪽 하단은 둥글지 않게
+                    bottomEnd = 13.dp,  // 오른쪽 하단은 둥글지 않게
                     bottomStart = 13.dp // 왼쪽 하단
                 )
 
@@ -299,123 +286,240 @@ fun SearchListItem(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight()
+                        .height(55.dp)
                 ){
                     Text(
-                        text = "거짓",
+                        text = "삭제하기",
                         color = Color.White,
                         modifier = Modifier
                             .padding(1.dp),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
-                    Text(
-                        text = if (searchItem.t_num == null || searchItem.f_num == null || searchItem.t_num == 0 || searchItem.f_num == 0) {
-                            if (searchItem.f_num == 0){
-                                "0 (0%)"
-                            }else{
-                                "${searchItem.f_num} (100%)"
-                            }
-
-                        } else {
-                            "${searchItem.f_num} (${"%.0f%%".format((searchItem.f_num.toFloat() / (searchItem.t_num + searchItem.f_num).toFloat()) * 100)})"
-                        },
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center
-                    )
                 }
 
             }
-            Card(
+        }else{
+            Row(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-                    .clickable(enabled = !isLoading) {
-                        if (currentUser != null){
-                            isLoading = true
-                            coroutineScope.launch {
-                                val user = currentUser?.email?.substringBefore("@")
-                                val (set_isFound, set_pushKey) = checkDatabase(user, searchItem.push)
-                                checkSetDatabase(
-                                    user,
-                                    true,
-                                    set_isFound,
-                                    set_pushKey,
-                                    searchItem.push,
-                                    searchViewModel,
-                                    isMyData,
-                                    onError = { errorMessage ->
-                                        isLoading = false
-                                        Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
-                                    },
-                                    onSuccess = { now_num, opposite_num,now_check, opposite_check ->
-                                        if (isMyData) {
-                                            searchViewModel.updateMyCheckNum(searchItem.push.toString(),now_num,opposite_num,now_check,opposite_check)
-                                        } else {
-                                            searchViewModel.updateCheckNum(searchItem.push.toString(),now_num,opposite_num,now_check,opposite_check)
-                                        }
-                                        searchViewModel.setChange_check(true)
-                                        isLoading = false
-                                    }
-                                )
-                            }
-                        }else{
-                            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                colors = CardDefaults.cardColors(
-                    containerColor = colorResource(
-                        id = if(searchItem.t_check ?: false)
-                            R.color.t_color
-                        else
-                            R.color.t_color2)
-                ),
-                shape = RoundedCornerShape(
-                    topStart = 0.dp,  // 왼쪽 상단
-                    topEnd = 0.dp,    // 오른쪽 상단
-                    bottomEnd = 13.dp,  // 오른쪽 하단은 둥글지 않게
-                    bottomStart = 0.dp // 왼쪽 하단
-                )
-            ){
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                    .fillMaxWidth()
+                    .height(60.dp)
+            ) {
+                Card(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .fillMaxHeight()
-                ){
-                    Text(
-                        text = "진실",
-                        color = Color.White,
-                        modifier = Modifier
-                            .padding(1.dp),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = if (searchItem.t_num == null || searchItem.f_num == null || searchItem.t_num == 0 || searchItem.f_num == 0) {
-                            if (searchItem.t_num == 0){
-                                "0 (0%)"
-                            }else{
-                                "${searchItem.t_num} (100%)"
-                            }
+                        .weight(1f)
+                        .clickable(enabled = !isLoading) {
+                            if (currentUser != null) {
+                                isLoading = true
+                                coroutineScope.launch {
+                                    val user = currentUser?.email?.substringBefore("@")
+                                    val (set_isFound, set_pushKey) = checkDatabase(
+                                        user,
+                                        searchItem.push
+                                    )
+                                    checkSetDatabase(
+                                        user,
+                                        false,
+                                        set_isFound,
+                                        set_pushKey,
+                                        searchItem.push,
+                                        searchViewModel,
+                                        isMyData,
+                                        onError = { errorMessage ->
+                                            isLoading = false
+                                            Toast
+                                                .makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT)
+                                                .show()
+                                        },
+                                        onSuccess = { now_num, opposite_num, now_check, opposite_check ->
+                                            if (isMyData) {
+                                                searchViewModel.updateMyCheckNum(
+                                                    searchItem.push.toString(),
+                                                    opposite_num,
+                                                    now_num,
+                                                    opposite_check,
+                                                    now_check
+                                                )
+                                            } else {
+                                                searchViewModel.updateCheckNum(
+                                                    searchItem.push.toString(),
+                                                    opposite_num,
+                                                    now_num,
+                                                    opposite_check,
+                                                    now_check
+                                                )
+                                            }
+                                            searchViewModel.setChange_check(true)
 
-                        } else {
-                            "${searchItem.t_num} (${"%.0f%%".format((searchItem.t_num.toFloat() / (searchItem.t_num + searchItem.f_num).toFloat()) * 100)})"
+                                            isLoading = false
+                                        }
+                                    )
+                                }
+                            } else {
+                                Toast
+                                    .makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
                         },
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorResource(
+                            id = if(searchItem.f_check ?: false)
+                                R.color.f_color
+                            else
+                                R.color.f_color2)
+                    ),
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,  // 왼쪽 상단
+                        topEnd = 0.dp,    // 오른쪽 상단
+                        bottomEnd = 0.dp,  // 오른쪽 하단은 둥글지 않게
+                        bottomStart = 13.dp // 왼쪽 하단
                     )
+
+                ){
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                    ){
+                        Text(
+                            text = "거짓",
+                            color = Color.White,
+                            modifier = Modifier
+                                .padding(1.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                        )
+                        Text(
+                            text = if (searchItem.t_num == null || searchItem.f_num == null || searchItem.t_num == 0 || searchItem.f_num == 0) {
+                                if (searchItem.f_num == 0){
+                                    "0 (0%)"
+                                }else{
+                                    "${searchItem.f_num} (100%)"
+                                }
+
+                            } else {
+                                "${searchItem.f_num} (${"%.0f%%".format((searchItem.f_num.toFloat() / (searchItem.t_num + searchItem.f_num).toFloat()) * 100)})"
+                            },
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                }
+                Card(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .clickable(enabled = !isLoading) {
+                            if (currentUser != null) {
+                                isLoading = true
+                                coroutineScope.launch {
+                                    val user = currentUser?.email?.substringBefore("@")
+                                    val (set_isFound, set_pushKey) = checkDatabase(
+                                        user,
+                                        searchItem.push
+                                    )
+                                    checkSetDatabase(
+                                        user,
+                                        true,
+                                        set_isFound,
+                                        set_pushKey,
+                                        searchItem.push,
+                                        searchViewModel,
+                                        isMyData,
+                                        onError = { errorMessage ->
+                                            isLoading = false
+                                            Toast
+                                                .makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT)
+                                                .show()
+                                        },
+                                        onSuccess = { now_num, opposite_num, now_check, opposite_check ->
+                                            if (isMyData) {
+                                                searchViewModel.updateMyCheckNum(
+                                                    searchItem.push.toString(),
+                                                    now_num,
+                                                    opposite_num,
+                                                    now_check,
+                                                    opposite_check
+                                                )
+                                            } else {
+                                                searchViewModel.updateCheckNum(
+                                                    searchItem.push.toString(),
+                                                    now_num,
+                                                    opposite_num,
+                                                    now_check,
+                                                    opposite_check
+                                                )
+                                            }
+                                            searchViewModel.setChange_check(true)
+                                            isLoading = false
+                                        }
+                                    )
+                                }
+                            } else {
+                                Toast
+                                    .makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorResource(
+                            id = if(searchItem.t_check ?: false)
+                                R.color.t_color
+                            else
+                                R.color.t_color2)
+                    ),
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,  // 왼쪽 상단
+                        topEnd = 0.dp,    // 오른쪽 상단
+                        bottomEnd = 13.dp,  // 오른쪽 하단은 둥글지 않게
+                        bottomStart = 0.dp // 왼쪽 하단
+                    )
+                ){
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                    ){
+                        Text(
+                            text = "진실",
+                            color = Color.White,
+                            modifier = Modifier
+                                .padding(1.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = if (searchItem.t_num == null || searchItem.f_num == null || searchItem.t_num == 0 || searchItem.f_num == 0) {
+                                if (searchItem.t_num == 0){
+                                    "0 (0%)"
+                                }else{
+                                    "${searchItem.t_num} (100%)"
+                                }
+
+                            } else {
+                                "${searchItem.t_num} (${"%.0f%%".format((searchItem.t_num.toFloat() / (searchItem.t_num + searchItem.f_num).toFloat()) * 100)})"
+                            },
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
                 }
 
             }
-
         }
+
     }
 
 }

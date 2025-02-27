@@ -49,10 +49,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.checkbook.NameChangeDialog
 import com.example.checkbook.R
 import com.example.checkbook.TopBarWithBackButton
 import com.example.checkbook.database.checkDatabase
 import com.example.checkbook.database.checkSetDatabase
+import com.example.checkbook.dialog.MoreDialog
 import com.example.checkbook.listview.SearchListView
 import com.example.checkbook.listview.SearchViewModel
 import com.example.checkbook.mvi.MainViewModel
@@ -68,6 +70,9 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
     val push = navBackStackEntry?.arguments?.getString("push")
     val data = navBackStackEntry?.arguments?.getString("data_key")
     val isMyData = navBackStackEntry?.arguments?.getBoolean("isMyData")
+    val info_type = navBackStackEntry?.arguments?.getString("info_type")
+
+    var showDialog by remember { mutableStateOf(false) }
 
     val items by if (isMyData?:false) {
         searchViewModel.itemsMy.collectAsState(emptyList())
@@ -80,15 +85,28 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
     BackHandler {
         navController.popBackStack()
     }
-
+    val context = LocalContext.current
     Scaffold(
         topBar = {
-            TopBarWithBackButton(
-                title = data ?: "검색어 없음",
-                onBackPressed = {
-                    navController.popBackStack()
-                }
-            )
+            if (info_type.equals("check")){
+                TopBarWithBackButton(
+                    title = data ?: "검색어 없음",
+                    onBackPressed = {
+                        navController.popBackStack()
+                    }
+                )
+            } else{
+                TopBarWithBackButton(
+                    data ?: "검색어 없음",
+                    onBackPressed = {
+                        navController.popBackStack()
+                    },
+                    onMoreClick = {
+                        showDialog = true
+                    },
+                    isMyData = isMyData ?: false,
+                )
+            }
 
         },
         content = {
@@ -101,7 +119,7 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .padding(top = 70.dp)
+                    .padding(top = 63.dp)
                     .background(Color.White)
             ) {
                 Row(
@@ -122,7 +140,9 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                 id = R.drawable.bottom_user_on
                             ),
                             contentDescription = null,
-                            modifier = Modifier.size(40.dp).align(Alignment.CenterHorizontally),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .align(Alignment.CenterHorizontally),
                             tint = Color.Unspecified
                         )
                         Spacer(modifier = Modifier.height(2.dp))
@@ -132,7 +152,9 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                             fontSize = 11.sp,
                             color = Color.Gray,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.height(18.dp).fillMaxWidth(),
+                            modifier = Modifier
+                                .height(18.dp)
+                                .fillMaxWidth(),
                             textAlign = TextAlign.Center
                         )
                     }
@@ -143,7 +165,10 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                         fontSize = 16.sp,
                         color = Color.Black,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxHeight().fillMaxWidth().padding(top = 4.dp),
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
                         textAlign = TextAlign.Start
                     )
                 }
@@ -152,7 +177,9 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                     fontWeight = FontWeight.Normal,
                     fontSize = 13.sp,
                     color = Color.Black,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 11.dp),
                     textAlign = TextAlign.End
                 )
                 Spacer(modifier = Modifier.height(18.dp))
@@ -229,11 +256,14 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                 .weight(1f)
                                 .clickable {
                                     if (isLoading) return@clickable
-                                    if (currentUser != null){
+                                    if (currentUser != null) {
                                         isLoading = true
                                         coroutineScope.launch {
                                             val user = currentUser?.email?.substringBefore("@")
-                                            val (set_isFound, set_pushKey) = checkDatabase(user, searchItem?.push)
+                                            val (set_isFound, set_pushKey) = checkDatabase(
+                                                user,
+                                                searchItem?.push
+                                            )
                                             checkSetDatabase(
                                                 user,
                                                 false,
@@ -241,24 +271,44 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                                 set_pushKey,
                                                 searchItem?.push,
                                                 searchViewModel,
-                                                isMyData?:false,
+                                                isMyData ?: false,
                                                 onError = { errorMessage ->
                                                     isLoading = false
-                                                    Toast.makeText(context, "데이터베이스 오류2", Toast.LENGTH_SHORT).show()
+                                                    Toast
+                                                        .makeText(
+                                                            context,
+                                                            "데이터베이스 오류2",
+                                                            Toast.LENGTH_SHORT
+                                                        )
+                                                        .show()
                                                 },
-                                                onSuccess = { now_num, opposite_num,now_check, opposite_check ->
-                                                    if (isMyData?:false) {
-                                                        searchViewModel.updateMyCheckNum(searchItem?.push.toString(),opposite_num,now_num,opposite_check,now_check)
+                                                onSuccess = { now_num, opposite_num, now_check, opposite_check ->
+                                                    if (isMyData ?: false) {
+                                                        searchViewModel.updateMyCheckNum(
+                                                            searchItem?.push.toString(),
+                                                            opposite_num,
+                                                            now_num,
+                                                            opposite_check,
+                                                            now_check
+                                                        )
                                                     } else {
-                                                        searchViewModel.updateCheckNum(searchItem?.push.toString(),opposite_num,now_num,opposite_check,now_check)
+                                                        searchViewModel.updateCheckNum(
+                                                            searchItem?.push.toString(),
+                                                            opposite_num,
+                                                            now_num,
+                                                            opposite_check,
+                                                            now_check
+                                                        )
                                                     }
 
                                                     isLoading = false
                                                 }
                                             )
                                         }
-                                    }else{
-                                        Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast
+                                            .makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT)
+                                            .show()
                                     }
                                 },
                             colors = CardDefaults.cardColors(
@@ -316,11 +366,14 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                 .weight(1f)
                                 .clickable {
                                     if (isLoading) return@clickable
-                                    if (currentUser != null){
+                                    if (currentUser != null) {
                                         isLoading = true
                                         coroutineScope.launch {
                                             val user = currentUser?.email?.substringBefore("@")
-                                            val (set_isFound, set_pushKey) = checkDatabase(user, searchItem?.push)
+                                            val (set_isFound, set_pushKey) = checkDatabase(
+                                                user,
+                                                searchItem?.push
+                                            )
                                             checkSetDatabase(
                                                 user,
                                                 true,
@@ -328,24 +381,44 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                                 set_pushKey,
                                                 searchItem?.push,
                                                 searchViewModel,
-                                                isMyData?:false,
+                                                isMyData ?: false,
                                                 onError = { errorMessage ->
                                                     isLoading = false
-                                                    Toast.makeText(context, "데이터베이스 오류", Toast.LENGTH_SHORT).show()
+                                                    Toast
+                                                        .makeText(
+                                                            context,
+                                                            "데이터베이스 오류",
+                                                            Toast.LENGTH_SHORT
+                                                        )
+                                                        .show()
                                                 },
-                                                onSuccess = { now_num, opposite_num,now_check, opposite_check ->
-                                                    if (isMyData?:false) {
-                                                        searchViewModel.updateMyCheckNum(searchItem?.push.toString(),now_num,opposite_num,now_check,opposite_check)
+                                                onSuccess = { now_num, opposite_num, now_check, opposite_check ->
+                                                    if (isMyData ?: false) {
+                                                        searchViewModel.updateMyCheckNum(
+                                                            searchItem?.push.toString(),
+                                                            now_num,
+                                                            opposite_num,
+                                                            now_check,
+                                                            opposite_check
+                                                        )
                                                     } else {
-                                                        searchViewModel.updateCheckNum(searchItem?.push.toString(),now_num,opposite_num,now_check,opposite_check)
+                                                        searchViewModel.updateCheckNum(
+                                                            searchItem?.push.toString(),
+                                                            now_num,
+                                                            opposite_num,
+                                                            now_check,
+                                                            opposite_check
+                                                        )
                                                     }
 
                                                     isLoading = false
                                                 }
                                             )
                                         }
-                                    }else{
-                                        Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast
+                                            .makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT)
+                                            .show()
                                     }
                                 },
                             colors = CardDefaults.cardColors(
@@ -401,7 +474,24 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                     }
                 }
             }
-
+            if (showDialog) {
+                MoreDialog(
+                    searchViewModel = searchViewModel,
+                    userId = searchItem?.id!!,
+                    push = push!!,
+                    info_type = info_type!!,
+                    onSuccesss = {
+                        navController.popBackStack()
+                        Toast.makeText(context,"삭제되었습니다.",Toast.LENGTH_SHORT).show()
+                        showDialog = false
+                    },
+                    onError = { errorMessage ->
+                        Toast.makeText(context,errorMessage,Toast.LENGTH_SHORT).show()
+                        showDialog = false
+                    },
+                    onDismiss = { showDialog = false }
+                )
+            }
 
         }
     )

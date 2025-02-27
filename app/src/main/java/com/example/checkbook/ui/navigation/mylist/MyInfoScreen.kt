@@ -79,7 +79,7 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                         if (data.equals("info")) {
                             SearchListView(
                                 searchViewModel, myInfoViewModel, navController,
-                                "", myInfoItem.id.toString(), myInfoItem.info ?: ArrayList()
+                                "", myInfoItem.id.toString(), myInfoItem.info ?: ArrayList(),data!!
                             )
                         } else if (data.equals("check")) {
                             val dataList = ArrayList<String>()
@@ -92,7 +92,7 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                             }
                             SearchListView(
                                 searchViewModel, myInfoViewModel, navController,
-                                "", myInfoItem.id.toString(), dataList
+                                "", myInfoItem.id.toString(), dataList,data!!
                             )
                         }
                     }

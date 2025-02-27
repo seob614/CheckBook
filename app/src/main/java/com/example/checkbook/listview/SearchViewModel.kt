@@ -2,6 +2,7 @@ package com.example.checkbook.listview
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -257,6 +258,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
             val dataList = mutableListOf<SearchItem>()
 
             list?.forEach { value ->
+
                 val databaseReference2 = Firebase.database.getReference("info").child(value.toString())
 
                 val snapshot = databaseReference2.get().await()
@@ -286,7 +288,24 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                         )
                         dataList.add(updatedItem)
                     }
+                }else{
+                    val deletedItem = SearchItem(
+                        push = value,
+                        id = "",
+                        name = "",
+                        profile = "",
+                        date = "",
+                        title = "삭제된 정보입니다.",
+                        info = "",
+                        t_num = 0,
+                        f_num = 0,
+                        t_check = false,
+                        f_check = false,
+                        delete = true
+                    )
+                    dataList.add(deletedItem)
                 }
+
             }
             dataList // 가져온 데이터를 반환
         }
@@ -306,6 +325,63 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         }
         // 업데이트된 리스트를 searchItems에 반영
         searchItemsMy.value = updatedList!!
+    }
+
+    suspend fun deleteMyCheck(userId: String, push: String, onError: (String) -> Unit, onSuccess: () -> Unit){
+        val db = FirebaseDatabase.getInstance().reference
+
+        val infoRef = db.child("id").child(userId).child("check")
+
+        try {
+            val snapshot = infoRef.get().await()
+            if (snapshot.exists()) {
+                for (child in snapshot.children) {
+                    val getpush = child.key
+                    val infoPushValue = child.child("info_push").getValue(String::class.java)
+
+                    if (infoPushValue == push) { // push 값이 일치하는 경우
+                        val checkRef = db.child("id").child(userId).child("check").child(getpush!!)
+                        checkRef.removeValue().await() // 해당 데이터만 삭제
+                        break // 첫 번째 발견된 항목만 삭제 후 종료
+                    }
+                }
+            }
+
+            searchItemsMy.value = searchItemsMy.value.filterNot { it.push == push }
+            onSuccess()
+        } catch (e: Exception) {
+            val errorMessage = "데이터 삭제 실패: ${e.message}"
+            onError(errorMessage)  // 실패하면 onError 호출
+            FirebaseCrashlytics.getInstance().log("데이터 삭제 실패: ${e.message}")
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
+    }
+
+    suspend fun deleteMyInfo(userId: String, push: String, onError: (String) -> Unit, onSuccess: () -> Unit) {
+        val db = FirebaseDatabase.getInstance().reference
+        val infoRef = db.child("id").child(userId).child("info")
+
+        try {
+            db.child("info").child(push).removeValue().await()
+
+            val snapshot = infoRef.get().await()
+            if (snapshot.exists()) {
+                for (child in snapshot.children) {
+                    if (child.value == push) { // push 값이 일치하는 경우
+                        infoRef.child(child.key!!).removeValue().await() // 삭제 후 대기
+                        break
+                    }
+                }
+            }
+
+            searchItemsMy.value = searchItemsMy.value.filterNot { it.push == push }
+            onSuccess()
+        } catch (e: Exception) {
+            val errorMessage = "데이터 삭제 실패: ${e.message}"
+            onError(errorMessage)  // 실패하면 onError 호출
+            FirebaseCrashlytics.getInstance().log("데이터 삭제 실패: ${e.message}")
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
     }
     // SearchItem을 업데이트하는 함수
     fun updateMyItem(push: String) {
@@ -352,6 +428,7 @@ data class SearchItem(
     val f_num: Int? = 0,
     val t_check: Boolean? = false,
     val f_check: Boolean? = false,
+    val delete: Boolean? = false
     //val reple: ArrayList<RepleItem>
 )
 
