@@ -75,7 +75,7 @@ object CheckRoute
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, repleViewModel: RepleViewModel, navController: NavController) {
-    val items by searchViewModel.check_items.observeAsState(emptyList())
+    val items by searchViewModel.check_items.collectAsState(emptyList())
 
     val isDatabaseCheck by searchViewModel.change_check.observeAsState(false)
 

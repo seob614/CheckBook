@@ -1,6 +1,8 @@
 package com.example.checkbook.dialog
 
+import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -21,6 +23,7 @@ import com.example.checkbook.viewmodel.MyInfoViewModel
 import com.google.firebase.database.core.Context
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MoreDialog(
     searchViewModel: SearchViewModel,
@@ -72,7 +75,19 @@ fun MoreDialog(
                                 })
                         }
                     } else {
-
+                        coroutineScope.launch {
+                            searchViewModel.declareInfo(
+                                userId,
+                                push,
+                                onError = { errorMessage ->
+                                    onError(errorMessage)
+                                    isLoading = false
+                                },
+                                onSuccess = {
+                                    onSuccesss()
+                                    isLoading = false
+                                })
+                        }
                     }
 
                 },

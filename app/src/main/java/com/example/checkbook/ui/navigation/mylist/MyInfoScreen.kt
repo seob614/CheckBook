@@ -6,17 +6,26 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -77,10 +86,22 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                         )
                     } else {
                         if (data.equals("info")) {
-                            SearchListView(
-                                searchViewModel, myInfoViewModel, navController,
-                                "", myInfoItem.id.toString(), myInfoItem.info ?: ArrayList(),data!!
-                            )
+                            if (myInfoItem.info ?.isEmpty() == true) {
+                                Text(
+                                    text = "추가한 지식이 없습니다.",
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically)
+                                )
+                            } else {
+                                SearchListView(
+                                    searchViewModel, myInfoViewModel, navController,
+                                    "", myInfoItem.id.toString(), myInfoItem.info ?: ArrayList(),data!!
+                                )
+                            }
+
                         } else if (data.equals("check")) {
                             val dataList = ArrayList<String>()
                             myInfoItem.check?.forEach { (key, value) ->
@@ -90,10 +111,22 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                                     dataList.add(pushValue.toString())
                                 }
                             }
-                            SearchListView(
-                                searchViewModel, myInfoViewModel, navController,
-                                "", myInfoItem.id.toString(), dataList,data!!
-                            )
+                            if (dataList.isEmpty()) {
+                                Text(
+                                    text = "체크한 정보가 없습니다.",
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically)
+                                )
+                            } else {
+                                SearchListView(
+                                    searchViewModel, myInfoViewModel, navController,
+                                    "", myInfoItem.id.toString(), dataList,data!!
+                                )
+                            }
+
                         }
                     }
 

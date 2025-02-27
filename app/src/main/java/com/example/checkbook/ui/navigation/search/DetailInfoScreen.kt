@@ -1,8 +1,10 @@
 package com.example.checkbook.ui.navigation.search
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +66,7 @@ import kotlinx.coroutines.launch
 
 const val DetailInfoRoute = "detail_info_route"
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
@@ -77,7 +80,7 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
     val items by if (isMyData?:false) {
         searchViewModel.itemsMy.collectAsState(emptyList())
     } else {
-        searchViewModel.items.observeAsState(emptyList())
+        searchViewModel.items.collectAsState(emptyList())
     }
 
     val searchItem = items.find { it.push == push }
@@ -482,7 +485,12 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                     info_type = info_type!!,
                     onSuccesss = {
                         navController.popBackStack()
-                        Toast.makeText(context,"삭제되었습니다.",Toast.LENGTH_SHORT).show()
+                        if (info_type.equals("info")){
+                            Toast.makeText(context,"삭제되었습니다.",Toast.LENGTH_SHORT).show()
+                        }else{
+                            Toast.makeText(context,"신고가 접수되었습니다.",Toast.LENGTH_SHORT).show()
+                        }
+
                         showDialog = false
                     },
                     onError = { errorMessage ->

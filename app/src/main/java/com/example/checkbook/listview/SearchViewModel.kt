@@ -1,7 +1,9 @@
 package com.example.checkbook.listview
 
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -12,29 +14,35 @@ import androidx.room.util.copy
 import com.example.checkbook.auth.AuthRepository
 import com.example.checkbook.database.checkDatabase
 import com.example.checkbook.database.getCheckValue
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.GenericTypeIndicator
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class SearchViewModel @Inject constructor() : ViewModel() {
     // Firebase에서 아이템을 가져오는 로직
-    private val searchItems = MutableLiveData<List<SearchItem>>()
-    val items: LiveData<List<SearchItem>> = searchItems
+    private val searchItems = MutableStateFlow<List<SearchItem>>(emptyList())
+    val items: StateFlow<List<SearchItem>> = searchItems.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -59,18 +67,18 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         _isDatabase = false
     }
 
-    fun loadData() {
+    fun loadData(search_data:String) {
         if (_isDatabase) return
         setLoading(true)
         viewModelScope.launch {
-            val data = fetchDataFromFirebase()
-            searchItems.postValue(data)
+            val data = fetchDataFromFirebase(search_data)
+            searchItems.value = data
             _isDatabase = true
             setLoading(false)
         }
     }
 
-    private suspend fun fetchDataFromFirebase(): List<SearchItem> {
+    private suspend fun fetchDataFromFirebase(search_data:String): List<SearchItem> {
         // 실제 Firebase 데이터를 가져오는 코드
 
         return withContext(Dispatchers.IO) {
@@ -83,32 +91,46 @@ class SearchViewModel @Inject constructor() : ViewModel() {
             for (child in snapshot.children) {
                 val item = child.getValue(SearchItem::class.java) // Firebase 데이터를 SearchItem으로 매핑
 
-                if (item?.id != null) {
-                    val databaseReference2 = Firebase.database.getReference("id")
-                        .child(item.id).child("name") // name 경로
-
-                    val nameValue = databaseReference2.get().await().getValue(String::class.java) ?: "익명" // 값이 없으면 "익명" 기본값 사용
-
-                    var tCheck = false
-                    var fCheck = false
-                    if (AuthRepository().getCurrentUser() != null) {
-                        val user = AuthRepository().getCurrentUser()?.email?.substringBefore("@")
-                        val (isFound, pushKey) = checkDatabase(user, child.key.toString())
-
-                        if (isFound) {
-                            val (tCheckStatus, fCheckStatus) = getCheckStatus(FirebaseDatabase.getInstance().reference, user, pushKey!!)
-                            tCheck = tCheckStatus ?: false
-                            fCheck = fCheckStatus ?: false
-                        }
+                if (item != null) {
+                    if ((item.declare?:ArrayList<String>()).size>10){
+                        continue
                     }
 
-                    val updatedItem = item.copy(
-                        name = nameValue,
-                        t_check = tCheck,
-                        f_check = fCheck
-                    )
-                    dataList.add(updatedItem)
+                    // info 또는 title에 search_data가 포함되는지 확인
+                    val infoContains = item.info?.contains(search_data, ignoreCase = true) == true
+                    val titleContains = item.title?.contains(search_data, ignoreCase = true) == true
+
+                    if (infoContains || titleContains) { // 하나라도 포함되면 추가
+                        if (item?.id != null) {
+                            val databaseReference2 = Firebase.database.getReference("id")
+                                .child(item.id).child("name") // name 경로
+
+                            val nameValue = databaseReference2.get().await().getValue(String::class.java) ?: "익명" // 값이 없으면 "익명" 기본값 사용
+
+                            var tCheck = false
+                            var fCheck = false
+                            if (AuthRepository().getCurrentUser() != null) {
+                                val user = AuthRepository().getCurrentUser()?.email?.substringBefore("@")
+                                val (isFound, pushKey) = checkDatabase(user, child.key.toString())
+
+                                if (isFound) {
+                                    val (tCheckStatus, fCheckStatus) = getCheckStatus(FirebaseDatabase.getInstance().reference, user, pushKey!!)
+                                    tCheck = tCheckStatus ?: false
+                                    fCheck = fCheckStatus ?: false
+                                }
+                            }
+
+                            val updatedItem = item.copy(
+                                name = nameValue,
+                                t_check = tCheck,
+                                f_check = fCheck
+                            )
+                            dataList.add(updatedItem)
+                        }
+                    }
                 }
+
+
 
             }
 
@@ -143,8 +165,11 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         searchItems.value = updatedList!!
     }
 
-    private val checkItems = MutableLiveData<List<SearchItem>>()
-    val check_items: LiveData<List<SearchItem>> = checkItems
+    //private val checkItems = MutableLiveData<List<SearchItem>>()
+    //val check_items: LiveData<List<SearchItem>> = checkItems
+
+    private val checkItems = MutableStateFlow<List<SearchItem>>(emptyList())
+    val check_items: StateFlow<List<SearchItem>> = checkItems.asStateFlow()
 
     private var _isDatabase_check = false
     val isDatabase_check: Boolean = _isDatabase_check
@@ -165,7 +190,8 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         setLoading(true)
         viewModelScope.launch {
             val data = fetchDataFromFirebase_check()
-            checkItems.postValue(data)
+            checkItems.value = data
+            //checkItems.postValue(data)
             _isDatabase_check = true
             setLoading(false)
         }
@@ -216,8 +242,8 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    private val searchItemsMy = MutableStateFlow<List<SearchItem>>(emptyList())  // 마이 데이터
-    val itemsMy: StateFlow<List<SearchItem>> = searchItemsMy
+    private val searchItemsMy = MutableStateFlow<List<SearchItem>>(emptyList())
+    val itemsMy: StateFlow<List<SearchItem>> = searchItemsMy.asStateFlow()
 
     private var _isDatabase_my = false
     val isDatabase_my: Boolean = _isDatabase_my
@@ -383,6 +409,104 @@ class SearchViewModel @Inject constructor() : ViewModel() {
             FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun declareInfo(userId: String, push: String, onError: (String) -> Unit, onSuccess: () -> Unit) {
+        val db = FirebaseDatabase.getInstance().reference
+        val infoRef = db.child("info").child(push).child("declare")
+
+        try {
+            if (declareDatabase(userId, push)){
+                onError("이미 신고한 정보입니다.")
+                return
+            }
+            declare_runTransactionAsTask(userId, infoRef).addOnCompleteListener { overallTask ->
+                if (overallTask.isSuccessful) {
+                    val newDeclareList = overallTask.result ?: ArrayList()
+
+                    val updatedList = searchItems.value?.map { searchItem ->
+                        if (searchItem.push == push) {
+                            // 아이템이 찾았으면 그 값만 업데이트
+                            searchItem.copy(declare = newDeclareList)
+                        } else {
+                            // 그렇지 않으면 그대로 유지
+                            searchItem
+                        }
+                    }
+                    // 업데이트된 리스트를 searchItems에 반영
+                    searchItems.value = updatedList!!
+                    onSuccess()
+                } else {
+                    val errorMessage = "지식 저장 실패: ${overallTask.exception?.message}"
+                    onError(errorMessage)
+                    val exception = overallTask.exception ?: Exception(errorMessage)
+                    FirebaseCrashlytics.getInstance().log("지식 저장 실패: ${exception.message}")
+                    FirebaseCrashlytics.getInstance().recordException(exception)
+                }
+            }
+        } catch (e: Exception) {
+            val errorMessage = "신고 실패: ${e.message}"
+            onError(errorMessage)  // 실패하면 onError 호출
+            FirebaseCrashlytics.getInstance().log("신고 실패: ${e.message}")
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
+    }
+
+    suspend fun declareDatabase(id: String, info_push: String): Boolean {
+        return suspendCancellableCoroutine { continuation ->
+            val db = FirebaseDatabase.getInstance().reference
+            db.child("info").child(info_push).child("declare")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        var isFound = false
+                        for (child in snapshot.children) {
+                            if (child.value == id) {
+                                isFound = true
+                                break
+                            }
+                        }
+                        if (isFound){
+                            continuation.resume(true)
+                        }else{
+                            continuation.resume(false)
+                        }
+
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        continuation.resumeWithException(Exception("info_push 검색 오류"))
+                    }
+                })
+        }
+    }
+    fun declare_runTransactionAsTask(idKey:String, reference: DatabaseReference): Task<ArrayList<String>> {
+        val taskCompletionSource = TaskCompletionSource<ArrayList<String>>()
+
+        reference.runTransaction(object : Transaction.Handler {
+            override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                val existingList = mutableData.getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
+                val updatedList = existingList + idKey // 기존 데이터에 새 값 추가
+                mutableData.value = updatedList
+                return Transaction.success(mutableData)
+            }
+
+            override fun onComplete(error: DatabaseError?, committed: Boolean, currentData: DataSnapshot?) {
+                if (error != null) {
+                    taskCompletionSource.setException(error.toException()) // 오류 발생 시 Task 실패
+                    Log.e("firebase", "Error runTransaction: ${error.message}")
+                    val errorMessage = "Error runTransaction"
+                    // Crashlytics에 오류 보고
+                    FirebaseCrashlytics.getInstance().log("Error runTransaction: ${error.message}")
+                    FirebaseCrashlytics.getInstance().recordException(Exception(errorMessage))
+                } else {
+                    val updatedDeclareList = currentData?.getValue(object : GenericTypeIndicator<ArrayList<String>>() {}) ?: java.util.ArrayList()
+                    taskCompletionSource.setResult(updatedDeclareList)
+                }
+            }
+        })
+
+        return taskCompletionSource.task
+    }
     // SearchItem을 업데이트하는 함수
     fun updateMyItem(push: String) {
         searchItemsMy.value = searchItemsMy.value.filterNot { it.push == push }
@@ -428,7 +552,8 @@ data class SearchItem(
     val f_num: Int? = 0,
     val t_check: Boolean? = false,
     val f_check: Boolean? = false,
-    val delete: Boolean? = false
+    val delete: Boolean? = false,
+    val declare: ArrayList<String>? = ArrayList(),
     //val reple: ArrayList<RepleItem>
 )
 

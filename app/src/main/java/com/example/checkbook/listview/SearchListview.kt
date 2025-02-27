@@ -75,14 +75,14 @@ fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoView
                 searchViewModel.loadData_my(id,list)  // 리스트 초기화 함수
             }
         } else {
-            searchViewModel.loadData()
+            searchViewModel.loadData(data)
         }
     }
 
     val items by if (isMyData) {
         searchViewModel.itemsMy.collectAsState(emptyList())
     } else {
-        searchViewModel.items.observeAsState(emptyList())
+        searchViewModel.items.collectAsState(emptyList())
     }
 
     LazyColumn(
@@ -138,8 +138,10 @@ fun SearchListItem(
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
     var deleteItem by remember { mutableStateOf(false) }
+    var declareItem by remember { mutableStateOf(false) }
 
     deleteItem = if (searchItem.delete?:false) true else false
+    declareItem = if ((searchItem.declare?:ArrayList<String>()).size>10) true else false
     Card(
         modifier = Modifier
             .padding(4.dp)
@@ -299,7 +301,44 @@ fun SearchListItem(
                 }
 
             }
-        }else{
+        }else if(declareItem&&info_type.equals("info")){
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+                    .clickable() {
+
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = colorResource(id = R.color.gray)
+                ),
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,  // 왼쪽 상단
+                    topEnd = 0.dp,    // 오른쪽 상단
+                    bottomEnd = 13.dp,  // 오른쪽 하단은 둥글지 않게
+                    bottomStart = 13.dp // 왼쪽 하단
+                )
+
+            ){
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp)
+                ){
+                    Text(
+                        text = "신고된 정보입니다.",
+                        color = Color.White,
+                        modifier = Modifier
+                            .padding(1.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                    )
+                }
+
+            }
+        } else{
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

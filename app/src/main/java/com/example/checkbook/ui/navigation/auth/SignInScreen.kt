@@ -134,7 +134,7 @@ fun SignInScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                         if (email.text.isNotEmpty() && password.text.isNotEmpty()) {
                             isLoading = true
                             coroutineScope.launch {
-                                val user = myInfoViewModel.signIn(email.text.trim()+"@checkbook.com", password.text)
+                                val user = myInfoViewModel.signIn(email.text.trim()+"@checkbook.com", password.text.trim())
                                 isLoading = false
                                 if (user != null) {
                                     // 로그인 성공

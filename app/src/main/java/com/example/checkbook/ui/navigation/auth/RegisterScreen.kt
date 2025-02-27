@@ -165,7 +165,7 @@ fun RegisterScreen (navController: NavController) {
                             coroutineScope.launch {
                                 // 아이디 조건: 5~13자, 영문 소문자, 숫자, 특수기호(_),(-)만 허용
                                 val emailRegex = "^[a-z0-9_-]{5,13}$".toRegex()
-                                if (!email.text.matches(emailRegex)) {
+                                if (!email.text.trim().matches(emailRegex)) {
                                     errorMessage = "아이디: 5~13자의 영문 소문자, 숫자와 특수기호(_),(-)만 사용 가능합니다."
                                     isLoading = false
                                     return@launch // 이메일 조건이 맞지 않으면 종료
@@ -181,7 +181,7 @@ fun RegisterScreen (navController: NavController) {
 
                                 // 비밀번호 조건: 8~16자, 영문 대/소문자, 숫자, 특수문자
                                 val passwordRegex = "^[a-zA-Z0-9!@#\$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]{8,16}$".toRegex()
-                                if (!password.text.matches(passwordRegex)) {
+                                if (!password.text.trim().matches(passwordRegex)) {
                                     errorMessage = "비밀번호: 8~16자의 영문 대/소문자, 숫자, 특수문자만 사용 가능합니다."
                                     isLoading = false
                                     return@launch // 비밀번호 조건이 맞지 않으면 종료
