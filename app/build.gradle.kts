@@ -95,4 +95,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     // Firebase Crashlytics 추가
     implementation("com.google.firebase:firebase-crashlytics-ktx")
+
+    //location
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }

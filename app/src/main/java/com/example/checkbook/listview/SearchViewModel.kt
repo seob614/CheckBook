@@ -95,10 +95,15 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     if ((item.declare?:ArrayList<String>()).size>10){
                         continue
                     }
+                    val searchWords = search_data.split("\\s+".toRegex())
 
-                    // info 또는 title에 search_data가 포함되는지 확인
-                    val infoContains = item.info?.contains(search_data, ignoreCase = true) == true
-                    val titleContains = item.title?.contains(search_data, ignoreCase = true) == true
+                    val infoContains = item.info?.let { info ->
+                        searchWords.any { word -> info.contains(word, ignoreCase = true) }
+                    } == true
+
+                    val titleContains = item.title?.let { title ->
+                        searchWords.any { word -> title.contains(word, ignoreCase = true) }
+                    } == true
 
                     if (infoContains || titleContains) { // 하나라도 포함되면 추가
                         if (item?.id != null) {
