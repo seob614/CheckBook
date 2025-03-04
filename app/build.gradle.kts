@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.checkbook"
+    namespace = "com.courr.checkbook"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.checkbook"
+        applicationId = "com.courr.checkbook"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

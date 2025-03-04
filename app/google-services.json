@@ -1,15 +1,16 @@
 {
   "project_info": {
     "project_number": "733242695495",
+    "firebase_url": "https://checkbook-39589-default-rtdb.firebaseio.com",
     "project_id": "checkbook-39589",
     "storage_bucket": "checkbook-39589.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:733242695495:android:e2219c6dcbe77e0da87662",
+        "mobilesdk_app_id": "1:733242695495:android:17607a397aa2be2aa87662",
         "android_client_info": {
-          "package_name": "com.example.checkbook"
+          "package_name": "com.courr.checkbook"
         }
       },
       "oauth_client": [],
