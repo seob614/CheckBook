@@ -133,7 +133,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
 
 
             }
-
+            dataList.reverse()
             dataList // 가져온 데이터를 반환
         }
         /*
@@ -197,6 +197,34 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         }
     }
 
+    private val check_searchItem = MutableStateFlow<SearchItem?>(null)
+    val checkSearchItem: StateFlow<SearchItem?> = check_searchItem.asStateFlow()
+
+    fun setCheckSearchItem(set_searchItem: SearchItem?){
+        if (set_searchItem!=null){
+            check_searchItem.value = set_searchItem
+        }else{
+            check_searchItem.value = null
+        }
+
+    }
+
+    fun setDetailSearchItem(set_searchItem: SearchItem?,isMyData: Boolean?){
+        if (set_searchItem!=null){
+            if (isMyData?:false){
+                searchItemsMy.value = searchItemsMy.value.map { item ->
+                    if (item.push == set_searchItem.push) set_searchItem else item
+                }
+            }else{
+                searchItems.value = searchItems.value.map { item ->
+                    if (item.push == set_searchItem.push) set_searchItem else item
+                }
+            }
+        }
+
+    }
+
+
     private suspend fun fetchDataFromFirebase_check(): List<SearchItem> {
         // 실제 Firebase 데이터를 가져오는 코드
 
@@ -237,7 +265,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                 }
 
             }
-
+            dataList.reverse()
             dataList // 가져온 데이터를 반환
         }
     }
@@ -252,12 +280,12 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         _isDatabase_my = false
     }
 
-    fun loadData_my(id: String,list:ArrayList<String>) {
+    fun loadData_my(id: String,hashMap:HashMap<String,String>) {
         if (_isDatabase_my) return
 
         setLoading(true)
 
-        if (list.isEmpty()) {
+        if (hashMap.isEmpty()) {
             searchItemsMy.value = emptyList()
 
             _isDatabase_my = true
@@ -267,7 +295,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         }
 
         viewModelScope.launch {
-            val data = fetchDataFromFirebase_my(id,list)
+            val data = fetchDataFromFirebase_my(id,hashMap)
             //searchItemsMy.postValue(data)
             searchItemsMy.value = data
             _isDatabase_my = true
@@ -276,16 +304,15 @@ class SearchViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    private suspend fun fetchDataFromFirebase_my(id:String,list: ArrayList<String>): List<SearchItem> {
+    private suspend fun fetchDataFromFirebase_my(id:String,hashMap: HashMap<String,String>): List<SearchItem> {
         // 실제 Firebase 데이터를 가져오는 코드
 
         return withContext(Dispatchers.IO) {
             Log.d("firebase", "firebase")
             val dataList = mutableListOf<SearchItem>()
 
-            list?.forEach { value ->
-
-                val databaseReference2 = Firebase.database.getReference("info").child(value.toString())
+            for(info_push in hashMap){
+                val databaseReference2 = Firebase.database.getReference("info").child(info_push.value)
 
                 val snapshot = databaseReference2.get().await()
                 if (snapshot.exists()) {
@@ -300,7 +327,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                         var tCheck = false
                         var fCheck = false
 
-                        val (isFound, pushKey) = checkDatabase(id, value.toString())
+                        val (isFound, pushKey) = checkDatabase(id, info_push.value)
 
                         if (isFound) {
                             val (tCheckStatus, fCheckStatus) = getCheckStatus(FirebaseDatabase.getInstance().reference, id, pushKey!!)
@@ -316,7 +343,7 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     }
                 }else{
                     val deletedItem = SearchItem(
-                        push = value,
+                        push = info_push.value,
                         id = "",
                         name = "",
                         profile = "",
@@ -331,8 +358,9 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     )
                     dataList.add(deletedItem)
                 }
-
             }
+
+            dataList.reverse()
             dataList // 가져온 데이터를 반환
         }
     }
@@ -437,10 +465,10 @@ class SearchViewModel @Inject constructor() : ViewModel() {
                     searchItems.value = updatedList!!
                     onSuccess()
                 } else {
-                    val errorMessage = "지식 저장 실패: ${overallTask.exception?.message}"
+                    val errorMessage = "신고 저장 실패: ${overallTask.exception?.message}"
                     onError(errorMessage)
                     val exception = overallTask.exception ?: Exception(errorMessage)
-                    FirebaseCrashlytics.getInstance().log("지식 저장 실패: ${exception.message}")
+                    FirebaseCrashlytics.getInstance().log("신고 저장 실패: ${exception.message}")
                     FirebaseCrashlytics.getInstance().recordException(exception)
                 }
             }
@@ -554,14 +582,5 @@ data class SearchItem(
     val f_check: Boolean? = false,
     val delete: Boolean? = false,
     val declare: ArrayList<String>? = ArrayList(),
-    //val reple: ArrayList<RepleItem>
+    val reple: HashMap<String, String>? = HashMap()
 )
-
-data class RepleItem(
-    val id: String,
-    val date: String,
-    val info: String,
-    val t_num: Int,
-    val f_num: Int,
-)
-

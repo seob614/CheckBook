@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.courr.checkbook" />
+                  <option name="mobileSdkAppId" value="1:733242695495:android:17607a397aa2be2aa87662" />
+                  <option name="projectId" value="checkbook-39589" />
+                  <option name="projectNumber" value="733242695495" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

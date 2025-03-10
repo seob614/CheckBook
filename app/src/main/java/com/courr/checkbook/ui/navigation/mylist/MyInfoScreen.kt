@@ -53,6 +53,7 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
             TopBarWithBackButton(
                 title = when (data) {
                     "info" -> "My지식"
+                    "reple" -> "MY댓글"
                     "check" -> "MY체크"
                     else -> "데이터 오류"
                 },
@@ -91,17 +92,42 @@ fun MyInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewModel,
                             } else {
                                 SearchListView(
                                     searchViewModel, myInfoViewModel, navController,
-                                    "", myInfoItem.id.toString(), myInfoItem.info ?: ArrayList(),data!!
+                                    "", myInfoItem.id.toString(), myInfoItem.info ?: HashMap<String, String>(),data!!
                                 )
                             }
 
-                        } else if (data.equals("check")) {
-                            val dataList = ArrayList<String>()
+                        } else if (data.equals("reple")) {
+                            val dataList = HashMap<String,String>()
                             myInfoItem.check?.forEach { (key, value) ->
                                 val pushValue = (value as? Map<String, Any>)?.get("info_push")
                                 if (pushValue != null) {
                                     // push 값이 있다면 출력
-                                    dataList.add(pushValue.toString())
+                                    dataList.put(pushValue.toString(),pushValue.toString())
+                                }
+                            }
+                            if (dataList.isEmpty()) {
+                                Text(
+                                    text = "체크한 정보가 없습니다.",
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxSize().wrapContentHeight(Alignment.CenterVertically)
+                                )
+                            } else {
+                                SearchListView(
+                                    searchViewModel, myInfoViewModel, navController,
+                                    "", myInfoItem.id.toString(), dataList,data!!
+                                )
+                            }
+
+                        }else if (data.equals("check")) {
+                            val dataList = HashMap<String,String>()
+                            myInfoItem.check?.forEach { (key, value) ->
+                                val pushValue = (value as? Map<String, Any>)?.get("info_push")
+                                if (pushValue != null) {
+                                    // push 값이 있다면 출력
+                                    dataList.put(pushValue.toString(),pushValue.toString())
                                 }
                             }
                             if (dataList.isEmpty()) {

@@ -257,11 +257,15 @@ fun UserScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, my
                 )
             }
         }
+        /*
         Card(
             modifier = Modifier
                 .padding(top = 13.dp, start = 15.dp, end = 15.dp)
                 .clickable {
-
+                    mainViewModel.onIntent(ScreenIntent.NavigateToMyInfo("reple"))
+                    //navController.navigate("$MyInfoRoute/check")
+                    mainViewModel.showDetail() // 디테일 화면 표시 상태 업데이트
+                    searchViewModel.yetDatabase_my()
                 }
                 .height(60.dp),
         ){
@@ -301,6 +305,8 @@ fun UserScreen(mainViewModel: MainViewModel, searchViewModel:SearchViewModel, my
                 )
             }
         }
+        
+         */
         Card(
             modifier = Modifier
                 .padding(top = 13.dp, start = 15.dp, end = 15.dp)

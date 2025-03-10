@@ -53,9 +53,11 @@ import com.courr.checkbook.TopBarWithBackButton
 import com.courr.checkbook.database.checkDatabase
 import com.courr.checkbook.database.checkSetDatabase
 import com.courr.checkbook.dialog.MoreDialog
+import com.courr.checkbook.dialog.RepleBottomSheetDialog
 import com.courr.checkbook.listview.SearchViewModel
 import com.courr.checkbook.ui.theme.CheckBookTheme
 import com.courr.checkbook.viewmodel.MyInfoViewModel
+import com.courr.checkbook.viewmodel.RepleViewModel
 import kotlinx.coroutines.launch
 
 const val DetailInfoRoute = "detail_info_route"
@@ -63,11 +65,13 @@ const val DetailInfoRoute = "detail_info_route"
 @RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
+fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, repleViewModel: RepleViewModel, navController: NavController, navBackStackEntry: NavBackStackEntry?) {
     val push = navBackStackEntry?.arguments?.getString("push")
     val data = navBackStackEntry?.arguments?.getString("data_key")
     val isMyData = navBackStackEntry?.arguments?.getBoolean("isMyData")
     val info_type = navBackStackEntry?.arguments?.getString("info_type")
+
+    val isBottomSheetVisible by repleViewModel.isBottomSheetVisible
 
     var showDialog by remember { mutableStateOf(false) }
 
@@ -199,8 +203,7 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                     Card(
                         modifier = Modifier
                             .clickable {
-                                // 클릭 이벤트 처리
-                                println("Card clicked!")
+                                repleViewModel.showBottomSheetDialog()
                             }
                             .padding(5.dp),
 
@@ -226,7 +229,7 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                                 fontSize = 16.sp,
                             )
                             Text(
-                                text = "10",
+                                text = (searchItem?.reple?.size ?: 0).toString(),
                                 color = Color.Gray,
                                 fontSize = 16.sp,
                             )
@@ -472,40 +475,51 @@ fun DetailInfoScreen(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoVi
                 }
             }
             if (showDialog) {
-                MoreDialog(
-                    searchViewModel = searchViewModel,
-                    userId = searchItem?.id!!,
-                    push = push!!,
-                    info_type = info_type!!,
-                    onSuccesss = {
-                        navController.popBackStack()
-                        if (info_type.equals("info")){
-                            Toast.makeText(context,"삭제되었습니다.",Toast.LENGTH_SHORT).show()
-                        }else{
-                            Toast.makeText(context,"신고가 접수되었습니다.",Toast.LENGTH_SHORT).show()
-                        }
+                val user = currentUser?.email?.substringBefore("@") ?: null
+                if (user!=null){
+                    MoreDialog(
+                        searchViewModel = searchViewModel,
+                        userId = searchItem?.id!!,
+                        myId = user,
+                        push = push!!,
+                        info_type = info_type!!,
+                        onSuccesss = {
+                            navController.popBackStack()
+                            if (info_type.equals("info")){
+                                Toast.makeText(context,"삭제되었습니다.",Toast.LENGTH_SHORT).show()
+                            }else{
+                                Toast.makeText(context,"신고가 접수되었습니다.",Toast.LENGTH_SHORT).show()
+                            }
 
-                        showDialog = false
-                    },
-                    onError = { errorMessage ->
-                        Toast.makeText(context,errorMessage,Toast.LENGTH_SHORT).show()
-                        showDialog = false
-                    },
-                    onDismiss = { showDialog = false }
-                )
+                            showDialog = false
+                        },
+                        onError = { errorMessage ->
+                            Toast.makeText(context,errorMessage,Toast.LENGTH_SHORT).show()
+                            showDialog = false
+                        },
+                        onDismiss = { showDialog = false }
+                    )
+                }else{
+                    Toast.makeText(context,"로그인이 필요합니다.",Toast.LENGTH_SHORT).show()
+                    showDialog = false
+                }
+
             }
+
+            RepleBottomSheetDialog(
+                isVisible = isBottomSheetVisible,
+                searchViewModel = searchViewModel,
+                myInfoViewModel = myInfoViewModel,
+                repleViewModel = repleViewModel,
+                searchItem =  searchItem,
+                screenType = "detail",
+                isMyData = isMyData,
+                navController = navController,
+                onClickCancel = {
+                    repleViewModel.hideBottomSheetDialog() // 바텀 시트 닫기
+                },
+            )
 
         }
     )
-}
-@Preview
-@Composable
-fun DetailInfoComposablePreview() {
-    val navController = rememberNavController()
-    val searchViewModel = SearchViewModel()
-    val myInfoViewModel = MyInfoViewModel()
-    val navBackStackEntry: NavBackStackEntry? = null
-    CheckBookTheme{
-        DetailInfoScreen(searchViewModel,myInfoViewModel, navController,navBackStackEntry)
-    }
 }

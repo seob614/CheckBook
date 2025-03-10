@@ -1,9 +1,11 @@
 package com.courr.checkbook
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -243,6 +245,7 @@ fun BottomNavigationBar(
     }
 
 }
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun MainBottomNavHost(
     mainViewModel: MainViewModel,
@@ -290,6 +293,7 @@ private fun MainBottomNavHost(
             DetailInfoScreen(
                 searchViewModel,
                 myInfoViewModel,
+                repleViewModel,
                 navController,
                 backStackEntry
             )

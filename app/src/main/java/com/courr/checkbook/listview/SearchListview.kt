@@ -52,16 +52,16 @@ import com.courr.checkbook.viewmodel.MyInfoViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String, list:ArrayList<String>,info_type:String) {
+fun SearchListView(searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, navController: NavController, data: String, id:String, hashMap:HashMap<String,String>,info_type:String) {
 
     val isMyData = id.isNotEmpty()
 
     LaunchedEffect(id) {  // id가 변경될 때마다 적절한 데이터 로드
         if (isMyData) {
-            if (list.isNotEmpty()){
-                searchViewModel.loadData_my(id,list)
+            if (hashMap.isNotEmpty()){
+                searchViewModel.loadData_my(id,hashMap)
             } else {
-                searchViewModel.loadData_my(id,list)  // 리스트 초기화 함수
+                searchViewModel.loadData_my(id,hashMap)  // 리스트 초기화 함수
             }
         } else {
             searchViewModel.loadData(data)
@@ -233,7 +233,7 @@ fun SearchListItem(
                     tint = Color.Unspecified
                 )
                 Text(
-                    text = "10",
+                    text = (searchItem?.reple?.size ?: 0).toString(),
                     color = Color.Black,
                     fontSize = 14.sp,
                 )

@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 fun MoreDialog(
     searchViewModel: SearchViewModel,
     userId: String,
+    myId: String,
     push: String,
     info_type:String,
     onSuccesss: () -> Unit,
@@ -72,7 +73,7 @@ fun MoreDialog(
                     } else {
                         coroutineScope.launch {
                             searchViewModel.declareInfo(
-                                userId,
+                                myId,
                                 push,
                                 onError = { errorMessage ->
                                     onError(errorMessage)

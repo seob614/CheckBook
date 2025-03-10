@@ -33,6 +33,7 @@ import com.courr.checkbook.mvi.MainViewModel
 import com.courr.checkbook.ui.theme.CheckBookTheme
 import com.courr.checkbook.viewmodel.MyInfoViewModel
 import java.util.ArrayList
+import java.util.HashMap
 
 const val SearchInfoRoute = "search_info_route"
 
@@ -94,7 +95,7 @@ fun SearchInfoScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewMo
                         )
                     } else {
                         SearchListView(searchViewModel, myInfoViewModel, navController, data?:"검색어 없음",
-                            "", ArrayList(),"검색")
+                            "", HashMap(),"검색")
                     }
                 }
 

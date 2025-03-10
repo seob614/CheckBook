@@ -1,7 +1,9 @@
 package com.courr.checkbook.ui.navigation
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,6 +65,7 @@ import kotlinx.coroutines.launch
 @Serializable
 object CheckRoute
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, myInfoViewModel: MyInfoViewModel, repleViewModel: RepleViewModel, navController: NavController) {
@@ -70,7 +73,7 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
 
     val isDatabaseCheck by searchViewModel.change_check.observeAsState(false)
 
-    var searchItem by remember { mutableStateOf<SearchItem?>(null) }
+    val searchItem by searchViewModel.checkSearchItem.collectAsState(null)
     var nextItemLoad by remember { mutableStateOf(false) }
     var shuffledItems by remember { mutableStateOf<List<SearchItem>>(emptyList()) } // 섞인 데이터를 보관할 리스트
     var currentIndex by remember { mutableStateOf(0) } // 현재 아이템 인덱스
@@ -79,13 +82,13 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
 
     searchViewModel.loadData_check()
     LaunchedEffect(items) {
-        searchItem = null
+        searchViewModel.setCheckSearchItem(null)
         nextItemLoad = false
         if (items.isNotEmpty()) {
             shuffledItems = items.shuffled() // 리스트 섞기
             currentIndex = 0 // 인덱스 초기화
             if (shuffledItems.isNotEmpty()){
-                searchItem = shuffledItems[currentIndex]
+                searchViewModel.setCheckSearchItem(shuffledItems[currentIndex])
             }
         }
     }
@@ -97,7 +100,7 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
 
     LaunchedEffect(nextItemLoad) {
         if (shuffledItems.isNotEmpty() && nextItemLoad && currentIndex < shuffledItems.size) {
-            searchItem = shuffledItems[currentIndex]
+            searchViewModel.setCheckSearchItem(shuffledItems[currentIndex])
             nextItemLoad = false
         } else if (currentIndex >= shuffledItems.size) {
             shuffledItems = emptyList()
@@ -222,9 +225,10 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                     .background(Color.White)
                             ){
                                 Card(
-                                    modifier = Modifier.clickable {
-                                        repleViewModel.showBottomSheetDialog()
-                                    }
+                                    modifier = Modifier
+                                        .clickable {
+                                            repleViewModel.showBottomSheetDialog()
+                                        }
                                         .padding(5.dp),
 
                                     ){
@@ -249,7 +253,7 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                             fontSize = 16.sp,
                                         )
                                         Text(
-                                            text = "10",
+                                            text = (searchItem?.reple?.size ?: 0).toString(),
                                             color = Color.Gray,
                                             fontSize = 16.sp,
                                         )
@@ -278,7 +282,8 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                                 if (currentUser != null) {
                                                     isLoading = true
                                                     coroutineScope.launch {
-                                                        val user = currentUser?.email?.substringBefore("@")
+                                                        val user =
+                                                            currentUser?.email?.substringBefore("@")
                                                         val (set_isFound, set_pushKey) = checkDatabase(
                                                             user,
                                                             searchItem?.push
@@ -293,8 +298,14 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                                             false,
                                                             onError = { errorMessage ->
                                                                 isLoading = false
-                                                                FirebaseCrashlytics.getInstance().log("Failed to update check: ${errorMessage}")
-                                                                FirebaseCrashlytics.getInstance().recordException(Exception(errorMessage))
+                                                                FirebaseCrashlytics
+                                                                    .getInstance()
+                                                                    .log("Failed to update check: ${errorMessage}")
+                                                                FirebaseCrashlytics
+                                                                    .getInstance()
+                                                                    .recordException(
+                                                                        Exception(errorMessage)
+                                                                    )
                                                                 Toast
                                                                     .makeText(
                                                                         context,
@@ -311,7 +322,13 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                                         )
                                                     }
                                                 } else {
-                                                    Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                                                    Toast
+                                                        .makeText(
+                                                            context,
+                                                            "로그인이 필요합니다.",
+                                                            Toast.LENGTH_SHORT
+                                                        )
+                                                        .show()
                                                 }
                                             },
                                         colors = CardDefaults.cardColors(
@@ -372,7 +389,8 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                                 if (currentUser != null) {
                                                     isLoading = true
                                                     coroutineScope.launch {
-                                                        val user = currentUser?.email?.substringBefore("@")
+                                                        val user =
+                                                            currentUser?.email?.substringBefore("@")
                                                         val (set_isFound, set_pushKey) = checkDatabase(
                                                             user,
                                                             searchItem?.push
@@ -387,8 +405,14 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
                                                             false,
                                                             onError = { errorMessage ->
                                                                 isLoading = false
-                                                                FirebaseCrashlytics.getInstance().log("Failed to update check: ${errorMessage}")
-                                                                FirebaseCrashlytics.getInstance().recordException(Exception(errorMessage))
+                                                                FirebaseCrashlytics
+                                                                    .getInstance()
+                                                                    .log("Failed to update check: ${errorMessage}")
+                                                                FirebaseCrashlytics
+                                                                    .getInstance()
+                                                                    .recordException(
+                                                                        Exception(errorMessage)
+                                                                    )
                                                                 Toast
                                                                     .makeText(
                                                                         context,
@@ -476,17 +500,19 @@ fun CheckScreen(mainViewModel: MainViewModel, searchViewModel: SearchViewModel, 
             }
             RepleBottomSheetDialog(
                 isVisible = isBottomSheetVisible,
+                searchViewModel = searchViewModel,
+                myInfoViewModel = myInfoViewModel,
+                repleViewModel = repleViewModel,
+                searchItem =  searchItem,
+                screenType = "check",
+                isMyData = false,
+                navController = navController,
                 onClickCancel = {
                     repleViewModel.hideBottomSheetDialog() // 바텀 시트 닫기
-                }
+                },
             )
 
-            /*
-            if (customBottomSheetDialogState.list.isEmpty()) {
 
-            }
-
-             */
         }
     )
 }

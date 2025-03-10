@@ -44,7 +44,7 @@ fun infoSetDatabase(id: String, title: String, info: String, onError: (String) -
     )
 
     //runTransaction 여러 사용자가 동시에 데이터를 추가해도 기존 데이터가 사라지지 않고, 원자적(atomic)으로 안전하게 업데이트
-    val task1 = runTransactionAsTask(pushKey.toString(),db.child("id").child(id).child("info"))
+    val task1 = db.child("id").child(id).child("info").child(pushKey.toString()).setValue(pushKey.toString())
 
     val task2 = newRef.setValue(infoMap)
 
@@ -57,6 +57,76 @@ fun infoSetDatabase(id: String, title: String, info: String, onError: (String) -
             onError(errorMessage)
             val exception = overallTask.exception ?: Exception(errorMessage)
             FirebaseCrashlytics.getInstance().log("지식 저장 실패: ${exception.message}")
+            FirebaseCrashlytics.getInstance().recordException(exception)
+        }
+    }
+}
+
+/*
+fun runTransactionAsTask(pushKey:String, reference: DatabaseReference): Task<Void> {
+    val taskCompletionSource = TaskCompletionSource<Void>()
+
+    reference.runTransaction(object : Transaction.Handler {
+        override fun doTransaction(mutableData: MutableData): Transaction.Result {
+            val existingList = mutableData.getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
+            val updatedList = existingList + pushKey // 기존 데이터에 새 값 추가
+            mutableData.value = updatedList
+            return Transaction.success(mutableData)
+        }
+
+        override fun onComplete(error: DatabaseError?, committed: Boolean, currentData: DataSnapshot?) {
+            if (error != null) {
+                taskCompletionSource.setException(error.toException()) // 오류 발생 시 Task 실패
+                Log.e("firebase", "Error runTransaction: ${error.message}")
+                val errorMessage = "Error runTransaction"
+                // Crashlytics에 오류 보고
+                FirebaseCrashlytics.getInstance().log("Error runTransaction: ${error.message}")
+                FirebaseCrashlytics.getInstance().recordException(Exception(errorMessage))
+            } else {
+                taskCompletionSource.setResult(null) // 성공 시 Task 완료
+            }
+        }
+    })
+
+    return taskCompletionSource.task
+}
+
+ */
+
+@SuppressLint("NewApi")
+fun repleSetDatabase(id: String, info: String, info_push: String?,onError: (String) -> Unit, onSuccess: (push:String) -> Unit) {
+    // Realtime Database에 사용자 정보 저장
+    val db = FirebaseDatabase.getInstance().reference
+    val newRef = db.child("reple").push()
+    val pushKey = newRef.key
+
+    val currentDateTime = LocalDateTime.now()
+    val formatter = DateTimeFormatter.ofPattern("yyyy년MM월dd일HH시mm분ss초")
+    val formattedDate = currentDateTime.format(formatter)
+    // 저장할 사용자 정보
+    val infoMap = mapOf(
+        "info_push" to info_push,
+        "push" to pushKey,
+        "id" to id,
+        "date" to formattedDate,
+        "info" to info,
+        "t_num" to 0,
+        "f_num" to 0,
+    )
+
+    val task1 = db.child("id").child(id).child("reple").child(pushKey.toString()).setValue(pushKey.toString())
+    val task2 = db.child("info").child(info_push!!).child("reple").child(pushKey.toString()).setValue(pushKey.toString())
+    val task3 = newRef.setValue(infoMap)
+
+    // 두 작업이 모두 완료될 때까지 기다림
+    Tasks.whenAll(task1, task2, task3).addOnCompleteListener { overallTask ->
+        if (overallTask.isSuccessful) {
+            onSuccess(pushKey.toString()) // 두 작업 모두 성공
+        } else {
+            val errorMessage = "댓글 저장 실패: ${overallTask.exception?.message}"
+            onError(errorMessage)
+            val exception = overallTask.exception ?: Exception(errorMessage)
+            FirebaseCrashlytics.getInstance().log("댓글 저장 실패: ${exception.message}")
             FirebaseCrashlytics.getInstance().recordException(exception)
         }
     }
@@ -87,6 +157,33 @@ suspend fun checkDatabase(id: String?, info_push: String?): Pair<Boolean, String
             })
     }
 }
+
+suspend fun reple_checkDatabase(id: String?, reple_push: String?): Pair<Boolean, String?> {
+    return suspendCancellableCoroutine { continuation ->
+        val db = FirebaseDatabase.getInstance().reference
+        db.child("id").child(id.toString()).child("check")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var isFound = false
+                    var pushKey: String? = null
+                    for (pushSnapshot in snapshot.children) {
+                        val get_reple_push = pushSnapshot.child("reple_push").value
+                        if (get_reple_push != null && get_reple_push == reple_push) {
+                            isFound = true
+                            pushKey = pushSnapshot.key
+                            break
+                        }
+                    }
+                    continuation.resume(Pair(isFound, pushKey))
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    continuation.resumeWithException(Exception("reple_push 검색 오류"))
+                }
+            })
+    }
+}
+
 suspend fun getCheckValue(db: DatabaseReference, id: String?, pushKey: String): Boolean {
     return suspendCancellableCoroutine { continuation ->
         db.child("id").child(id.toString()).child("check").child(pushKey).child("check")
@@ -173,32 +270,4 @@ suspend fun checkSetDatabase(id: String?, check: Boolean, isFound: Boolean, push
         FirebaseCrashlytics.getInstance().log("check 저장 실패: ${e.message}")
         FirebaseCrashlytics.getInstance().recordException(e)
     }
-}
-
-fun runTransactionAsTask(pushKey:String, reference: DatabaseReference): Task<Void> {
-    val taskCompletionSource = TaskCompletionSource<Void>()
-
-    reference.runTransaction(object : Transaction.Handler {
-        override fun doTransaction(mutableData: MutableData): Transaction.Result {
-            val existingList = mutableData.getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
-            val updatedList = existingList + pushKey // 기존 데이터에 새 값 추가
-            mutableData.value = updatedList
-            return Transaction.success(mutableData)
-        }
-
-        override fun onComplete(error: DatabaseError?, committed: Boolean, currentData: DataSnapshot?) {
-            if (error != null) {
-                taskCompletionSource.setException(error.toException()) // 오류 발생 시 Task 실패
-                Log.e("firebase", "Error runTransaction: ${error.message}")
-                val errorMessage = "Error runTransaction"
-                // Crashlytics에 오류 보고
-                FirebaseCrashlytics.getInstance().log("Error runTransaction: ${error.message}")
-                FirebaseCrashlytics.getInstance().recordException(Exception(errorMessage))
-            } else {
-                taskCompletionSource.setResult(null) // 성공 시 Task 완료
-            }
-        }
-    })
-
-    return taskCompletionSource.task
 }

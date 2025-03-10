@@ -111,7 +111,8 @@ fun CreateInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewMo
                             }
                             innerTextField()
                         }
-                    }
+                    },
+                    readOnly = isLoading,
                 )
 
                 Text(
@@ -143,7 +144,8 @@ fun CreateInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewMo
                             }
                             innerTextField()
                         }
-                    }
+                    },
+                    readOnly = isLoading,
                 )
 
                 // 로그인 버튼
@@ -153,7 +155,6 @@ fun CreateInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewMo
                             isLoading = true
                             coroutineScope.launch {
                                 val user = currentUser?.email?.substringBefore("@") ?: null
-                                isLoading = false
                                 if (user != null) {
                                     coroutineScope.launch {
                                         infoSetDatabase(
@@ -174,6 +175,7 @@ fun CreateInfoScreen(mainViewModel: MainViewModel, myInfoViewModel: MyInfoViewMo
                                     }
 
                                 } else {
+                                    isLoading = false
                                     errorMessage = "업로드 실패: 로그인를 상태를 확인해주세요."
                                 }
                             }
